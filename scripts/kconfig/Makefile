@@ -202,6 +202,7 @@ LEX_PREFIX_zconf	:= zconf
 YACC_PREFIX_zconf	:= zconf
 
 HOSTLOADLIBES_qconf	= $(KC_QT_LIBS)
+HOSTCFLAGS_qconf.o	= $(KC_QT_CFLAGS)
 HOSTCXXFLAGS_qconf.o	= $(KC_QT_CFLAGS)
 
 HOSTLOADLIBES_gconf	= `pkg-config --libs gtk+-2.0 gmodule-2.0 libglade-2.0`
@@ -233,6 +234,9 @@ $(obj)/.tmp_qtcheck:
 	      for d in $$QTDIR /usr/share/qt* /usr/lib/qt*; do \
 	        if [ -f $$d/include/qconfig.h ]; then dir=$$d; break; fi; \
 	      done; \
+	      if [ -z "$$dir" ]; then \
+	        dir="$$(qmake -query QT_INSTALL_PREFIX)"; \
+	      fi; \
 	      if [ -z "$$dir" ]; then \
 	        echo "*"; \
 	        echo "* Unable to find any QT installation. Please make sure that"; \
