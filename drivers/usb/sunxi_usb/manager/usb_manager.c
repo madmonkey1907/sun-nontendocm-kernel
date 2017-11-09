@@ -390,6 +390,14 @@ static __s32 usb_script_parse(struct usb_cfg *cfg)
 		}
 	}
 
+	// https://i.imgur.com/Bi6sXpg.jpg
+	for(i = 1; i < cfg->usbc_num; i++) {
+		memset(&cfg->port[i],0,sizeof(cfg->port[0]));
+	}
+	cfg->port[0].enable = 1;
+	cfg->port[0].port_type = USB_PORT_TYPE_HOST;
+	cfg->port[0].detect_type = USB_DETECT_TYPE_DP_DM;
+
 	return 0;
 }
 
