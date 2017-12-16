@@ -40,11 +40,19 @@
 #include <mach/platform.h>
 #include <linux/gpio.h>
 
+#include <linux/device.h>
+#include <linux/sysfs.h>
+#include <linux/kobject.h>
+
 #include  "../include/sunxi_usb_config.h"
 #include  "usb_manager.h"
 #include  "usbc_platform.h"
 #include  "usb_hw_scan.h"
 #include  "usb_msg_center.h"
+
+static struct device *dev_attr_sunxi_usb;
+static struct kobject kobj_sunxi_usb;
+static struct usb_scan_info g_usb_scan_info;
 
 static struct usb_cfg g_usb_cfg;
 
@@ -228,7 +236,6 @@ static int usb_hardware_scan_thread(void * pArg)
 
 		if (atomic_read(&thread_suspend_flag))
 			continue;
-		usb_hw_scan(cfg);
 		usb_msg_center(cfg);
 
 		DMSG_DBG_MANAGER("\n\n");
@@ -395,7 +402,7 @@ static __s32 usb_script_parse(struct usb_cfg *cfg)
 		memset(&cfg->port[i],0,sizeof(cfg->port[0]));
 	}
 	cfg->port[0].enable = 1;
-	cfg->port[0].port_type = USB_PORT_TYPE_HOST;
+	cfg->port[0].port_type = USB_PORT_TYPE_OTG;
 	cfg->port[0].detect_type = USB_DETECT_TYPE_DP_DM;
 
 	return 0;
@@ -552,6 +559,45 @@ static __s32 get_usb_cfg(struct usb_cfg *cfg)
 	return 0;
 }
 
+static ssize_t show_usb_role(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	enum usb_role role = USB_ROLE_NULL;
+
+	role = get_usb_role();
+	return sprintf(buf, "%u\n", role);
+}
+
+static ssize_t store_usb_role(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	enum usb_role role = USB_ROLE_NULL;
+	enum usb_role target_role = USB_ROLE_NULL;
+	role = get_usb_role();
+	
+	if(!strncmp(buf, "0", 1)){
+		target_role = USB_ROLE_NULL;
+	}else if(!strncmp(buf, "1", 1)){
+		target_role = USB_ROLE_HOST;
+	}else if(!strncmp(buf, "2", 1)){
+		target_role = USB_ROLE_DEVICE;
+	}
+	
+	if(role == USB_ROLE_DEVICE)
+		hw_rmmod_usb_device();
+	
+	if(role == USB_ROLE_HOST)
+		hw_rmmod_usb_host();
+	
+	if(target_role == USB_ROLE_DEVICE)
+		hw_insmod_usb_device();
+	
+	if(target_role == USB_ROLE_HOST)
+		hw_insmod_usb_host();
+	
+	return count;
+}
+
+static DEVICE_ATTR(usb_role, 0644, show_usb_role, store_usb_role);
+
 static int __init usb_manager_init(void)
 {
 	__s32 ret = 0;
@@ -594,26 +640,24 @@ static int __init usb_manager_init(void)
 	USBC_init(&usbc);
 #endif
 	usbc0_platform_device_init(&g_usb_cfg.port[0]);
+	hw_insmod_usb_host();
 
-#ifdef CONFIG_USB_SUNXI_USB0_OTG
-	if (g_usb_cfg.port[0].port_type == USB_PORT_TYPE_OTG
-		&& g_usb_cfg.port[0].detect_type == USB_DETECT_TYPE_VBUS_ID) {
-		usb_hw_scan_init(&g_usb_cfg);
-
-		atomic_set(&thread_suspend_flag, 0);
-		thread_run_flag = 1;
-		thread_stopped_flag = 0;
-		th = kthread_create(usb_hardware_scan_thread, &g_usb_cfg, "usb-hardware-scan");
-		if (IS_ERR(th)) {
-			DMSG_PANIC("ERR: kthread_create failed\n");
-			return -1;
-		}
-
-		wake_up_process(th);
+	atomic_set(&thread_suspend_flag, 0);
+	thread_run_flag = 1;
+	thread_stopped_flag = 0;
+	th = kthread_create(usb_hardware_scan_thread, &g_usb_cfg, "usb-hardware-scan");
+	if (IS_ERR(th)) {
+		DMSG_PANIC("ERR: kthread_create failed\n");
+		return -1;
 	}
-#endif
+
+	wake_up_process(th);
 
 	DMSG_MANAGER_DEBUG("[sw usb]: usb_manager_init end\n");
+	// Create /sys/devices/sunxi_usb
+	dev_attr_sunxi_usb = root_device_register("sunxi_usb");
+	kobj_sunxi_usb = dev_attr_sunxi_usb->kobj;
+	sysfs_create_file(&kobj_sunxi_usb, &dev_attr_usb_role.attr);
 	return 0;
 }
 
@@ -650,10 +694,12 @@ static void __exit usb_manager_exit(void)
 			msleep(10);
 		}
 		pin_exit(&g_usb_cfg);
-		usb_hw_scan_exit(&g_usb_cfg);
+		
 	}
 #endif
-
+  
+  sysfs_remove_file(&kobj_sunxi_usb, &dev_attr_usb_role.attr);
+  root_device_unregister(dev_attr_sunxi_usb);
 	usbc0_platform_device_exit(&g_usb_cfg.port[0]);
 	return;
 }
