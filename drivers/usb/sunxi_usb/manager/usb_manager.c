@@ -236,6 +236,7 @@ static int usb_hardware_scan_thread(void * pArg)
 
 		if (atomic_read(&thread_suspend_flag))
 			continue;
+		usb_hw_scan(cfg);
 		usb_msg_center(cfg);
 
 		DMSG_DBG_MANAGER("\n\n");
@@ -592,6 +593,8 @@ static ssize_t store_usb_role(struct device *dev, struct device_attribute *attr,
 	
 	if(target_role == USB_ROLE_HOST)
 		hw_insmod_usb_host();
+		
+	usb_msg_center(&g_usb_cfg);
 	
 	return count;
 }
@@ -640,18 +643,24 @@ static int __init usb_manager_init(void)
 	USBC_init(&usbc);
 #endif
 	usbc0_platform_device_init(&g_usb_cfg.port[0]);
-	hw_insmod_usb_host();
 
-	atomic_set(&thread_suspend_flag, 0);
-	thread_run_flag = 1;
-	thread_stopped_flag = 0;
-	th = kthread_create(usb_hardware_scan_thread, &g_usb_cfg, "usb-hardware-scan");
-	if (IS_ERR(th)) {
-		DMSG_PANIC("ERR: kthread_create failed\n");
-		return -1;
+#ifdef CONFIG_USB_SUNXI_USB0_OTG
+	if (g_usb_cfg.port[0].port_type == USB_PORT_TYPE_OTG
+		&& g_usb_cfg.port[0].detect_type == USB_DETECT_TYPE_VBUS_ID) {
+		usb_hw_scan_init(&g_usb_cfg);
+
+		atomic_set(&thread_suspend_flag, 0);
+		thread_run_flag = 1;
+		thread_stopped_flag = 0;
+		th = kthread_create(usb_hardware_scan_thread, &g_usb_cfg, "usb-hardware-scan");
+		if (IS_ERR(th)) {
+			DMSG_PANIC("ERR: kthread_create failed\n");
+			return -1;
+		}
+
+		wake_up_process(th);
 	}
-
-	wake_up_process(th);
+#endif
 
 	DMSG_MANAGER_DEBUG("[sw usb]: usb_manager_init end\n");
 	// Create /sys/devices/sunxi_usb
@@ -694,7 +703,7 @@ static void __exit usb_manager_exit(void)
 			msleep(10);
 		}
 		pin_exit(&g_usb_cfg);
-		
+		usb_hw_scan_exit(&g_usb_cfg);
 	}
 #endif
   
