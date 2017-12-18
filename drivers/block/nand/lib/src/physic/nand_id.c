@@ -504,6 +504,8 @@ struct __NandPhyInfoPar_t SpansionNandTbl[] =
     { {0x01, 0xff, 0xff, 0x00, 0xff, 0xff, 0xff, 0xff }, 1,     4,      64,     1024,   0x00000000,   896,    30,     0,      0,         0,   &PhysicArchiPara0, &DefDDRInfo,  0x060002 ,20000},   // DFT01GR08P1PM0
     { {0x01, 0xda, 0x90, 0x95, 0x46, 0xff, 0xff, 0xff }, 1,     4,      64,     2048,       0x0088,   896,    25,     3,      0,         0,   &PhysicArchiPara0, &DefDDRInfo,  0x060003 ,20000},    //S34ML02G2
     { {0x01, 0xdc, 0x90, 0x95, 0x56, 0xff, 0xff, 0xff }, 1,     4,      64,     4096,       0x0088,   896,    30,     3,      0,         0,   &PhysicArchiPara0, &DefDDRInfo,  0x060004 ,60000},    //S34ML04G2
+    { {0x01, 0xd3, 0xd1, 0x95, 0x5a, 0xff, 0xff, 0xff }, 4,     4,      64,     4096,       0x0088,   896,    30,     3,      0,         0,   &PhysicArchiPara0, &DefDDRInfo,  0x060005 ,60000},    //S34ML16G2
+    { {0x01, 0xd5, 0xd2, 0x95, 0x5e, 0xff, 0xff, 0xff }, 4,     4,      64,     4096,       0x0088,   896,    30,     3,      0,         0,   &PhysicArchiPara0, &DefDDRInfo,  0x060006 ,60000},    //S34ML16G2
     //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------           
     { {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff }, 0,     0,       0,        0,   0x00000000,     0,     0,     0,      0,         0,          0,              0,        0xffffff },   // NULL
 };
