@@ -6,12 +6,16 @@ MAKE(){
 
 CROSS_COMPILE=arm-linux-gnueabihf-
 KDIR="$(pwd)"
-KVERS="3.4.112"
+eval "$(head -n4 "$KDIR/Makefile" | sed 's#\s*=\s*#=#')"
+KVERS="$VERSION.$PATCHLEVEL.$SUBLEVEL$EXTRAVERSION"
 instdir="$KDIR/modules-hmod"
 
 MAKE mrproper
 MAKE sun_nontendocm_defconfig
-#make ARCH=arm "CROSS_COMPILE=$CROSS_COMPILE" xconfig
+export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:"$(QT_SELECT=4 qmake -query QT_INSTALL_LIBS)/pkgconfig"
+pkg-config --exists QtCore
+make ARCH=arm "CROSS_COMPILE=$CROSS_COMPILE" xconfig || \
+make ARCH=arm "CROSS_COMPILE=$CROSS_COMPILE" menuconfig
 MAKE dep
 MAKE zImage
 MAKE modules
@@ -30,11 +34,12 @@ mkdir "$instdir"
 MAKE "INSTALL_MOD_PATH=$instdir" modules_install
 find "$instdir" -type l -delete
 
-mv "$instdir/lib/modules/$KVERS+" "$instdir/lib/modules/$KVERS" || true
 mkdir "$instdir/lib/modules/$KVERS/extra"
 cp -f "modules/mali/mali.ko" "$instdir/lib/modules/$KVERS/extra/"
 cp -f "clovercon/clovercon.ko" "$instdir/lib/modules/$KVERS/extra/"
 
 find "$instdir" -type f -name "*.ko" -print0 | xargs -0 -n1 "${CROSS_COMPILE}strip" --strip-unneeded
 makepack "$instdir"
-mv "$instdir.hmod.tgz" "madmonkey-modules-$KVERS.hmod"
+rm -rf "$instdir"
+rm -f "modules-$KVERS.hmod"
+mv "$instdir.hmod.tgz" "modules-$KVERS.hmod"
