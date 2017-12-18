@@ -1386,7 +1386,8 @@ void check_phyisc(void)
         return;
     }
 	
-    nand_check_uboot(buf,sbuf);
+    //nand_check_uboot(buf,sbuf);
+    PHY_ERR(" check_uboot has skipped by honeylab.\n");
 
     PHY_ERR(" check_phyisc end.\n");
 
