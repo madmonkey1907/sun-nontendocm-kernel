@@ -16,6 +16,8 @@ export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:"$(QT_SELECT=4 qmake -query QT_INSTALL_L
 pkg-config --exists QtCore
 make ARCH=arm "CROSS_COMPILE=$CROSS_COMPILE" xconfig || \
 make ARCH=arm "CROSS_COMPILE=$CROSS_COMPILE" menuconfig
+MAKE savedefconfig
+mv -f "defconfig" "arch/arm/configs/sun_nontendocm_defconfig"
 MAKE dep
 MAKE zImage
 MAKE modules
