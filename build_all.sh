@@ -40,6 +40,8 @@ mkdir "$instdir/lib/modules/$KVERS/extra"
 cp -f "modules/mali/mali.ko" "$instdir/lib/modules/$KVERS/extra/"
 cp -f "clovercon/clovercon.ko" "$instdir/lib/modules/$KVERS/extra/"
 
+echo "no-uninstall" > "$instdir/uninstall"
+
 find "$instdir" -type f -name "*.ko" -print0 | xargs -0 -n1 "${CROSS_COMPILE}strip" --strip-unneeded
 makepack "$instdir"
 rm -rf "$instdir"
