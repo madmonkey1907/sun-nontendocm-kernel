@@ -521,12 +521,14 @@ int NAND_BurnBoot0(unsigned int length, void *buf)
 		goto error;
 	}
 
+#if 0
 	if ( get_dram_para(buffer) ) {
 		debug("get dram para error\n");
 		goto error;
 	} else {
 		debug("get dram para ok\n");
 	}
+#endif
 	get_nand_para(buffer);
 	debug("get nand para ok\n");
 	gen_check_sum(buffer);

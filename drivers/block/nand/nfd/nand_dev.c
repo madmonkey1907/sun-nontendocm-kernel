@@ -325,6 +325,10 @@ int add_nand(struct nand_blk_ops *tr, struct _nand_phy_partition* phy_partition)
         //nand_dbg_err("disk->size %x\n",disk[i].size);
     }
 
+    if(PartitionNO == 0)
+    {
+        dev_num = -1;
+    }
     head_disk = get_disk_from_phy_partition(phy_partition);
     for(i=0;i<MAX_PART_COUNT_PER_FTL;i++)
     {
@@ -365,11 +369,13 @@ int add_nand(struct nand_blk_ops *tr, struct _nand_phy_partition* phy_partition)
         memcpy(nand_dev->name,disk->name,strlen(disk->name)+1);
         nand_dbg_err("nand_dev add %s\n",nand_dev->name);
 
+#if 0
         if((PartitionNO == 0) && (i==0))
         {
             dev_num = -1;
         }
         else
+#endif
         {
             dev_num++;
             nand_dev->nbd.devnum = dev_num;
@@ -402,7 +408,7 @@ int add_nand_for_dragonboard_test(struct nand_blk_ops *tr)
 
     nand_dev->nbd.size = 1024*4096;
     nand_dev->nbd.priv = (void*)nand_dev;
-    
+
     dev_num = 0;
     nand_dev->nbd.devnum = dev_num;
     printk("befor add nand blktrans dev\n");

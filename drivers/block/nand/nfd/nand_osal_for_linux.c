@@ -1306,7 +1306,7 @@ void NAND_Print_Version(void)
 
 int NAND_get_storagetype(void)
 {
-#if 1
+#if 0
     script_item_value_type_e script_ret;
     script_item_u storage_type;
     
@@ -1320,7 +1320,7 @@ int NAND_get_storagetype(void)
 
     return (int)storage_type.val;
 #else
-	return 1;
+	return -1;
 #endif
     
 }
