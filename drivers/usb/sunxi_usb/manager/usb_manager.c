@@ -40,9 +40,11 @@
 #include <mach/platform.h>
 #include <linux/gpio.h>
 
+#ifdef CONFIG_USB_SUNXI_HACK
 #include <linux/device.h>
 #include <linux/sysfs.h>
 #include <linux/kobject.h>
+#endif
 
 #include  "../include/sunxi_usb_config.h"
 #include  "usb_manager.h"
@@ -50,9 +52,11 @@
 #include  "usb_hw_scan.h"
 #include  "usb_msg_center.h"
 
+#ifdef CONFIG_USB_SUNXI_HACK
 static struct device *dev_attr_sunxi_usb;
 static struct kobject kobj_sunxi_usb;
 static struct usb_scan_info g_usb_scan_info;
+#endif
 
 static struct usb_cfg g_usb_cfg;
 
@@ -398,6 +402,7 @@ static __s32 usb_script_parse(struct usb_cfg *cfg)
 		}
 	}
 
+#ifdef CONFIG_USB_SUNXI_HACK
 	// https://i.imgur.com/Bi6sXpg.jpg
 	for(i = 1; i < cfg->usbc_num; i++) {
 		memset(&cfg->port[i],0,sizeof(cfg->port[0]));
@@ -405,6 +410,7 @@ static __s32 usb_script_parse(struct usb_cfg *cfg)
 	cfg->port[0].enable = 1;
 	cfg->port[0].port_type = USB_PORT_TYPE_OTG;
 	cfg->port[0].detect_type = USB_DETECT_TYPE_DP_DM;
+#endif
 
 	return 0;
 }
@@ -560,6 +566,7 @@ static __s32 get_usb_cfg(struct usb_cfg *cfg)
 	return 0;
 }
 
+#ifdef CONFIG_USB_SUNXI_HACK
 static ssize_t show_usb_role(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	enum usb_role role = USB_ROLE_NULL;
@@ -600,6 +607,7 @@ static ssize_t store_usb_role(struct device *dev, struct device_attribute *attr,
 }
 
 static DEVICE_ATTR(usb_role, 0644, show_usb_role, store_usb_role);
+#endif
 
 static int __init usb_manager_init(void)
 {
@@ -663,10 +671,12 @@ static int __init usb_manager_init(void)
 #endif
 
 	DMSG_MANAGER_DEBUG("[sw usb]: usb_manager_init end\n");
+#ifdef CONFIG_USB_SUNXI_HACK
 	// Create /sys/devices/sunxi_usb
 	dev_attr_sunxi_usb = root_device_register("sunxi_usb");
 	kobj_sunxi_usb = dev_attr_sunxi_usb->kobj;
 	sysfs_create_file(&kobj_sunxi_usb, &dev_attr_usb_role.attr);
+#endif
 	return 0;
 }
 
@@ -706,9 +716,10 @@ static void __exit usb_manager_exit(void)
 		usb_hw_scan_exit(&g_usb_cfg);
 	}
 #endif
-  
+#ifdef CONFIG_USB_SUNXI_HACK
   sysfs_remove_file(&kobj_sunxi_usb, &dev_attr_usb_role.attr);
   root_device_unregister(dev_attr_sunxi_usb);
+#endif
 	usbc0_platform_device_exit(&g_usb_cfg.port[0]);
 	return;
 }

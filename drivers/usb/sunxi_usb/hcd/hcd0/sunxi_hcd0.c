@@ -380,7 +380,7 @@ static s32 close_usb_clock(sunxi_hcd_io_t *sunxi_hcd_io)
 
 static __s32 pin_init(sunxi_hcd_io_t *sunxi_hcd_io)
 {
-#if 0//ndef  SUNXI_USB_FPGA
+#if !defined(CONFIG_USB_SUNXI_HACK) && !defined(SUNXI_USB_FPGA)
 	__s32 ret = 0;
 	script_item_value_type_e type = 0;
 	script_item_u item_temp;

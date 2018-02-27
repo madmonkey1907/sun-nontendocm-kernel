@@ -68,3 +68,6 @@ config USB_SUNXI_HOST
     help
         SUNXI USB driver debug message.
 
+config USB_SUNXI_HACK
+   depends on (USB_SUNXI_USB && USB_SUNXI_USB_MANAGER)
+   boolean "enable hakchi hacks"

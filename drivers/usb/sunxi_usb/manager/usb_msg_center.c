@@ -57,10 +57,12 @@ static void set_usb_role(struct usb_msg_center_info *center_info, enum usb_role 
 	return;
 }
 
+#ifdef CONFIG_USB_SUNXI_HACK
 void _set_usb_role(enum usb_role role)
 {
 	set_usb_role(&g_center_info, role);
 }
+#endif
 
 /*
 void app_insmod_usb_host(void)

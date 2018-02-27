@@ -52,7 +52,9 @@ void hw_insmod_usb_device(void);
 void hw_rmmod_usb_device(void);
 
 enum usb_role get_usb_role(void);
+#ifdef CONFIG_USB_SUNXI_HACK
 void _set_usb_role(enum usb_role role);
+#endif
 void usb_msg_center(struct usb_cfg *cfg);
 
 s32 usb_msg_center_init(struct usb_cfg *cfg);
