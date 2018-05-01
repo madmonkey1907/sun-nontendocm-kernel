@@ -21,12 +21,76 @@
 #include <linux/firmware.h>
 #include <linux/slab.h>
 #include <linux/sched.h>
+#include <linux/file.h>
 
 #define to_dev(obj) container_of(obj, struct device, kobj)
 
 MODULE_AUTHOR("Manuel Estrada Sainz");
 MODULE_DESCRIPTION("Multi purpose firmware loading support");
 MODULE_LICENSE("GPL");
+
+static const char *fw_path[] = {
+	"/var/lib/hakchi/rootfs/lib/firmware",
+	"/lib/firmware",
+	"/var/firmware"
+};
+
+/* Don't inline this: 'struct kstat' is biggish */
+static noinline long fw_file_size(struct file *file)
+{
+	struct kstat st;
+	if (vfs_getattr(file->f_path.mnt, file->f_path.dentry, &st))
+		return -1;
+	if (!S_ISREG(st.mode))
+		return -1;
+	if (st.size != (long)st.size)
+		return -1;
+	return st.size;
+}
+
+static bool fw_read_file_contents(struct file *file, struct firmware *fw)
+{
+	loff_t pos;
+	long size;
+	char *buf;
+
+	size = fw_file_size(file);
+	if (size < 0)
+		return false;
+	buf = vmalloc(size);
+	if (!buf)
+		return false;
+	pos = 0;
+	if (vfs_read(file, buf, size, &pos) != size) {
+		vfree(buf);
+		return false;
+	}
+	fw->data = buf;
+	fw->size = size;
+	return true;
+}
+
+static bool fw_get_filesystem_firmware(struct firmware *fw, const char *name)
+{
+	int i;
+	bool success = false;
+	char *path = __getname();
+
+	for (i = 0; i < ARRAY_SIZE(fw_path); i++) {
+		struct file *file;
+		snprintf(path, PATH_MAX, "%s/%s", fw_path[i], name);
+
+		file = filp_open(path, O_RDONLY, 0);
+		if (IS_ERR(file))
+			continue;
+		success = fw_read_file_contents(file, fw);
+		fput(file);
+		if (success)
+			break;
+	}
+	__putname(path);
+	return success;
+}
 
 /* Builtin firmware support */
 
@@ -199,7 +263,10 @@ static ssize_t firmware_loading_show(struct device *dev,
 static void firmware_free_data(const struct firmware *fw)
 {
 	int i;
-	vunmap(fw->data);
+	if (fw->pages)
+		vunmap(fw->data);
+	else
+		vfree(fw->data);
 	if (fw->pages) {
 		for (i = 0; i < PFN_UP(fw->size); i++)
 			__free_page(fw->pages[i]);
@@ -489,6 +556,11 @@ _request_firmware_prepare(const struct firmware **firmware_p, const char *name,
 
 	if (fw_get_builtin_firmware(firmware, name)) {
 		dev_dbg(device, "firmware: using built-in firmware %s\n", name);
+		return NULL;
+	}
+
+	if (fw_get_filesystem_firmware(firmware, name)) {
+		dev_dbg(device, "firmware: direct-loading firmware %s\n", name);
 		return NULL;
 	}
 
