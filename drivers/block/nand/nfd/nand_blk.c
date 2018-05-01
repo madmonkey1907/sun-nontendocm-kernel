@@ -693,6 +693,7 @@ static int nand_ioctl(struct block_device *bdev, fmode_t mode, unsigned int cmd,
         }
         return ret;
 
+    case hakchi_test:
     case phy_read:
     case phy_write:
     case read_boot0:

@@ -6,6 +6,8 @@ MAKE(){
 
 CROSS_COMPILE=arm-linux-gnueabihf-
 KDIR="$(pwd)"
+EXTRAVERSION=".$(git log --oneline | wc -l)-madmonkey"
+sed -i "s#EXTRAVERSION =.*#EXTRAVERSION = $EXTRAVERSION#" "$KDIR/Makefile"
 eval "$(head -n4 "$KDIR/Makefile" | sed 's#\s*=\s*#=#')"
 KVERS="$VERSION.$PATCHLEVEL.$SUBLEVEL$EXTRAVERSION"
 instdir="$KDIR/modules-hmod"
@@ -18,6 +20,7 @@ make ARCH=arm "CROSS_COMPILE=$CROSS_COMPILE" xconfig || \
 make ARCH=arm "CROSS_COMPILE=$CROSS_COMPILE" menuconfig
 MAKE savedefconfig
 mv -f "defconfig" "arch/arm/configs/sun_nontendocm_defconfig"
+git diff "arch/arm/configs/sun_nontendocm_defconfig"
 MAKE dep
 MAKE zImage
 MAKE modules
@@ -34,15 +37,18 @@ rm -rf "$instdir"
 mkdir "$instdir"
 
 MAKE "INSTALL_MOD_PATH=$instdir" modules_install
+#MAKE "INSTALL_MOD_PATH=$instdir" firmware_install
 find "$instdir" -type l -delete
 
 mkdir "$instdir/lib/modules/$KVERS/extra"
 cp -f "modules/mali/mali.ko" "$instdir/lib/modules/$KVERS/extra/"
 cp -f "clovercon/clovercon.ko" "$instdir/lib/modules/$KVERS/extra/"
 
-echo "no-uninstall" > "$instdir/uninstall"
+echo "return 0" > "$instdir/uninstall"
+echo "no-uninstall" >> "$instdir/uninstall"
 
 find "$instdir" -type f -name "*.ko" -print0 | xargs -0 -n1 "${CROSS_COMPILE}strip" --strip-unneeded
+exit 0
 makepack "$instdir"
 rm -rf "$instdir"
 rm -f "modules-$KVERS.hmod"
