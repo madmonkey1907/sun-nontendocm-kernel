@@ -48,6 +48,7 @@ echo "return 0" > "$instdir/uninstall"
 echo "no-uninstall" >> "$instdir/uninstall"
 
 find "$instdir" -type f -name "*.ko" -print0 | xargs -0 -n1 "${CROSS_COMPILE}strip" --strip-unneeded
+echo "somebody set up us the bomb"
 exit 0
 makepack "$instdir"
 rm -rf "$instdir"

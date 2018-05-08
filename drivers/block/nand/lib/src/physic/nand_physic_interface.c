@@ -1284,7 +1284,7 @@ int nand_check_uboot(unsigned char *buf,unsigned char *sbuf)
 *****************************************************************************/
 int nand_read_nboot_one(unsigned char *buf,unsigned int len,unsigned int counter)
 {
-
+    return 0;
 }
 
 /*****************************************************************************
@@ -1296,7 +1296,7 @@ int nand_read_nboot_one(unsigned char *buf,unsigned int len,unsigned int counter
 *****************************************************************************/
 int nand_write_nboot_one(unsigned char *buf,unsigned int len,unsigned int counter)
 {
-
+    return 0;
 }
 
 /*****************************************************************************

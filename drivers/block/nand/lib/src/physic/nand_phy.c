@@ -569,7 +569,7 @@ __s32 _read_single_page_spare(struct boot_physical_param *readop,__u8 dma_wait_m
 	__u8 default_value[16];
 	__u8 addr[5];
 	NFC_CMD_LIST cmd_list[4];
-	__u32 list_len,i,n,m;
+	__u32 list_len,i,n,m = 0;
 	__u32 free_page_flag = 0;
 	//__s32 err, cnt;
 
@@ -1356,7 +1356,7 @@ __s32  PHY_BlockErase(struct __PhysicOpPara_t *pBlkAdr)
 	__u32 rb;
 	__u8 addr[4][5];
 	__s32 ret=0;
-	__u32 plane_cnt,i,list_len;
+	__u32 plane_cnt,i,list_len=0;
 	__u32 block_in_chip;
 	NFC_CMD_LIST cmd_list[8];
 
@@ -1444,7 +1444,7 @@ __s32 _read_sectors(struct boot_physical_param *readop,__u8 dma_wait_mode)
 	__u8 default_value[16];
 	__u8 addr[5];
 	NFC_CMD_LIST cmd_list[4];
-	__u32 list_len,i,n,m;
+	__u32 list_len,i,n,m=0;
 	__u8 *data_buf;
 	__u32 data_size;
 
@@ -2100,7 +2100,7 @@ __s32 _read_sectors_first(struct boot_physical_param *readop,__u8 dma_wait_mode)
 	__u8 default_value[16];
 	__u8 addr[5];
 	NFC_CMD_LIST cmd_list[4];
-	__u32 list_len,i,n,m;
+	__u32 list_len,i,n,m=0;
 	__u8 *data_buf;
 	__u32 data_size;
 
@@ -2509,7 +2509,7 @@ __s32 _read_sectors_v2_first(struct boot_physical_param *readop, __u8 dma_wait_m
 	__u8 default_value[16];
 	__u8 addr[5];
 	NFC_CMD_LIST cmd_list[4];
-	__u32 list_len,i,n,m;
+	__u32 list_len,i,n,m=0;
 	//__u8 *data_buf;
 
 	//data_buf = PageCachePool.TmpPageCache;

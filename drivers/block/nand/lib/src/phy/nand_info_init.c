@@ -298,6 +298,8 @@ int test_mbr(uchar* data)
     mbr_data->array[1].addr = 327680;
     mbr_data->array[1].len = 0;
     mbr_data->array[1].user_type = 0;
+
+    return 0;
 }
 
 /*****************************************************************************
@@ -424,6 +426,7 @@ int print_factory_block_table(struct _nand_info*nand_info)
 	    }
 	}
 
+    return 0;
 }
 
 /*****************************************************************************

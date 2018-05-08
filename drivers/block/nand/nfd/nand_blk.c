@@ -17,12 +17,47 @@ static unsigned int dragonboard_test_flag = 0;
 
 //#define NAND_IO_RESPONSE_TEST
 
-struct burn_param_t{
-    void* buffer;
-    long length;
-    long offset;
-    long unused;
+#pragma pack(push,1)
+
+struct burn_param_b
+{
+    void*buffer;
+    uint32_t length;
 };
+
+struct burn_param_t
+{
+    void*buffer;
+    uint32_t length;
+    uint32_t offset;
+    union
+    {
+        uint32_t flags;
+        struct
+        {
+            uint32_t raw:2;
+            uint32_t getoob:1;
+            uint32_t unused:29;
+        } in;
+        struct
+        {
+            uint32_t unused;
+        } out;
+    };
+    struct burn_param_b oob;
+    uint32_t badblocks;
+};
+
+struct hakchi_nandinfo
+{
+    char str[8];
+    __u32 size;
+    __u32 page_size;
+    __u32 pages_per_block;
+    __u32 block_count;
+};
+
+#pragma pack(pop)
 
 /*****************************************************************************/
 
@@ -399,15 +434,91 @@ extern __s32 NAND_GetBlkCntOfDie(void);
 
 extern int NAND_ReadBoot0(unsigned int length,void*buf);
 
-static uint NAND_UbootSimpleRead(uint start, uint blocks, void* buffer)
+int mark_bad_block( uint chip_num, uint blk_num)
 {
-    __u32 i, k, block;
+    boot_flash_info_t info;
+    struct boot_physical_param para;
+    unsigned char oob_buf[OOB_BUF_SIZE];
+    unsigned char* page_buf;
+    int page_index[4];
+    uint page_with_bad_block, page_per_block;
+    uint i;
+    int mark_err_flag = -1;
+    if( NAND_GetFlashInfo( &info ))
+    {
+        nand_dbg_err("get flash info failed.\n");
+        return -1;
+    }
+    //cal nand parameters
+    //page_buf = (unsigned char*)(MARK_BAD_BLK_BUF_ADR);
+    page_buf = (unsigned char*)kmalloc(32 * 1024, GFP_KERNEL);
+    if(!page_buf)
+    {
+        nand_dbg_err("malloc memory for page buf fail\n");
+        return -1;
+    }
+    memset(page_buf,0xff,32*1024);
+    page_with_bad_block = info.pagewithbadflag;
+    page_per_block = info.blocksize/info.pagesize;
+    //read the first, second, last, last-1 page for check bad blocks
+    page_index[0] = 0;
+    page_index[1] = 0xEE;
+    page_index[2] = 0xEE;
+    page_index[3] = 0xEE;
+    switch(page_with_bad_block & 0x03)
+    {
+    case 0x00:
+        //the bad block flag is in the first page, same as the logical information, just read 1 page is ok
+        break;
+    case 0x01:
+        //the bad block flag is in the first page or the second page, need read the first page and the second page
+        page_index[1] = 1;
+        break;
+    case 0x02:
+        //the bad block flag is in the last page, need read the first page and the last page
+        page_index[1] = page_per_block - 1;
+        break;
+    case 0x03:
+        //the bad block flag is in the last 2 page, so, need read the first page, the last page and the last-1 page
+        page_index[1] = page_per_block - 1;
+        page_index[2] = page_per_block - 2;
+        break;
+    }
+    for(i =0; i<4; i++)
+    {
+        oob_buf[0] = 0x0;
+        oob_buf[1] = 0x1;
+        oob_buf[2] = 0x2;
+        oob_buf[3] = 0x3;
+        oob_buf[4] = 0x89;
+        oob_buf[5] = 0xab;
+        oob_buf[6] = 0xcd;
+        oob_buf[7] = 0xef;
+        para.chip = chip_num;
+        para.block = blk_num;
+        para.page = page_index[i];
+        para.mainbuf = page_buf;
+        para.oobbuf = oob_buf;
+        if(para.page == 0xEE)
+            continue;
+        PHY_SimpleWrite( &para );
+        PHY_SimpleRead( &para );
+        if(oob_buf[0] !=0xff)
+            mark_err_flag = 0;
+    }
+    kfree(page_buf);
+    return mark_err_flag;
+}
+
+static uint NAND_UbootSimpleRead(uint start, uint blocks, void* buffer, struct burn_param_t*burn_param)
+{
+    __u32 i, k, block, badblock;
     __u32 page_size, pages_per_block, block_size, block_count;
     unsigned char oob_buf[OOB_BUF_SIZE];
     struct boot_physical_param para;
 
-    for (i = 0; i < 32; i++)
-        oob_buf[i] = 0xff;
+    const int raw=burn_param->in.raw;
+    burn_param->flags=0;
 
     page_size = NAND_GetPageSize();
     pages_per_block = NAND_GetPageCntPerBlk();
@@ -417,6 +528,7 @@ static uint NAND_UbootSimpleRead(uint start, uint blocks, void* buffer)
     block = 0;
     for (i = start; i < block_count && block < blocks; i++)
     {
+        badblock=0;
         for (k = 0; k < pages_per_block; k++)
         {
             para.chip  = 0;
@@ -424,34 +536,48 @@ static uint NAND_UbootSimpleRead(uint start, uint blocks, void* buffer)
             para.page  = k;
             para.mainbuf = (void *) ((__u32)buffer + block * block_size + k * page_size);
             para.oobbuf = oob_buf;
+            memset(oob_buf,0xff,OOB_BUF_SIZE);
 
-            if (PHY_SimpleRead(&para) < 0 || oob_buf[0] != 0xff)
+            if(PHY_SimpleRead(&para)<0)
             {
-                nand_dbg_err("Warning. Fail in read page %d in block %d.\n", k, i);
-                // retry to read data block from next NAND block
-                block--;
-                break;
+                nand_dbg_err("Warning. Fail in read page %x in block %x.\n", k, i);
+                memset(para.mainbuf,'X',page_size);
+                badblock=1;
             }
+            if(oob_buf[0]!=0xff)
+            {
+                badblock=1;
+            }
+            if(badblock)
+            {
+                //0 - logical, 1 - break, 2 - read all pages, 3 - unused
+                if(raw<2)
+                    break;
+            }
+        }
+
+        if(badblock)
+        {
+            ++burn_param->badblocks;
+            if(raw==0)//retry to read data block on next NAND block
+                --block;
         }
 
         ++block;
     }
 
-    if (block < blocks)
-        return 0;
-
     return blocks;
 }
 
-static uint NAND_UbootSimpleWrite(uint start, uint blocks, void *buffer)
+static uint NAND_UbootSimpleWrite(uint start, uint blocks, void *buffer, struct burn_param_t*burn_param)
 {
-    __u32 i, k, block;
+    __u32 i, k, block, badblock;
     __u32 page_size, pages_per_block, block_size, block_count;
     unsigned char oob_buf[OOB_BUF_SIZE];
     struct boot_physical_param para;
 
-    for (i = 0; i < 32; i++)
-        oob_buf[i] = 0xff;
+    const int raw=burn_param->in.raw;
+    burn_param->flags=0;
 
     page_size = NAND_GetPageSize();
     pages_per_block = NAND_GetPageCntPerBlk();
@@ -465,11 +591,15 @@ static uint NAND_UbootSimpleWrite(uint start, uint blocks, void *buffer)
         para.block = i;
         if (PHY_SimpleErase(&para) < 0)
         {
-            nand_dbg_err("Fail in erasing block %d.\n", i);
-            //mark_bad_block(para.chip, para.block);
+            nand_dbg_err("Fail in erasing block %x.\n", i);
+            mark_bad_block(para.chip, para.block);
+            ++burn_param->badblocks;
+            if(raw>0)
+              ++block;
             continue;
         }
 
+        badblock=0;
         for (k = 0; k < pages_per_block; k++)
         {
             para.chip  = 0;
@@ -477,48 +607,47 @@ static uint NAND_UbootSimpleWrite(uint start, uint blocks, void *buffer)
             para.page  = k;
             para.mainbuf = (void *) ((__u32)buffer + block * block_size + k * page_size);
             para.oobbuf = oob_buf;
+            memset(oob_buf,0xff,OOB_BUF_SIZE);
 
             if (PHY_SimpleWrite(&para) < 0)
             {
-                nand_dbg_err("Warning. Fail in write page %d in block %d.\n", k, i);
-                //mark_bad_block(para.chip, para.block);
-                // retry to write data block on next NAND block
-                block--;
-                break;
+                nand_dbg_err("Warning. Fail in write page %x in block %x.\n", k, i);
+                badblock=1;
+                //0 - logical, 1 - break, 2 - write all pages, 3 - unused
+                if(raw<2)
+                    break;
             }
+        }
+
+        if(badblock)
+        {
+            mark_bad_block(para.chip, para.block);
+            ++burn_param->badblocks;
+            if(raw==0)//retry to write data block on next NAND block
+                --block;
         }
 
         ++block;
     }
 
-    if (block < blocks)
-        return 0;
-
     return blocks;
 }
 
-struct hakchi_nandinfo
-{
-    char str[8];
-    __u32 size;
-    __u32 page_size;
-    __u32 pages_per_block;
-    __u32 block_count;
-};
-
-static int NAND_ioctlRW(unsigned int cmd,unsigned int offset,unsigned int length,void*buf)
+static int NAND_ioctlRW(unsigned int cmd, struct burn_param_t*burn_param)
 {
     void*buffer;
     struct hakchi_nandinfo htn;
     __u32 block_size;
 
-    if(length==0)
+    burn_param->badblocks=0;
+
+    if(burn_param->length==0)
     {
         buffer=0;
     }
     else
     {
-        buffer=(void*)kmalloc(length,GFP_KERNEL);
+        buffer=(void*)kmalloc(burn_param->length,GFP_KERNEL);
         if(buffer==NULL)
         {
             nand_dbg_err("no memory!\n");
@@ -536,11 +665,12 @@ static int NAND_ioctlRW(unsigned int cmd,unsigned int offset,unsigned int length
     switch(cmd)
     {
     case hakchi_test:
+        burn_param->flags=0;
         htn.block_count=NAND_GetBlkCntPerChip();
         memcpy(htn.str,"hakchi",7);
         htn.str[7]=0;
         htn.size=sizeof(htn);
-        if(copy_to_user(buf,&htn,sizeof(htn)))
+        if(copy_to_user(burn_param->buffer,&htn,sizeof(htn)))
         {
             nand_dbg_err("copy_to_user error!\n");
             goto error;
@@ -548,18 +678,18 @@ static int NAND_ioctlRW(unsigned int cmd,unsigned int offset,unsigned int length
         break;
 
     case phy_read:
-        if((length%block_size)||(offset%block_size))
+        if((burn_param->length%block_size)||(burn_param->offset%block_size))
         {
-            nand_dbg_err("phy_read: requested %x at %x, block_size %x\n",length,offset,block_size);
+            nand_dbg_err("phy_read: requested %x at %x, block_size %x\n",burn_param->length,burn_param->offset,block_size);
             goto error;
         }
-        memset(buffer,0,length);
-        if(NAND_UbootSimpleRead(offset/block_size,length/block_size,buffer)!=(length/block_size))
+        memset(buffer,'X',burn_param->length);
+        if(NAND_UbootSimpleRead(burn_param->offset/block_size,burn_param->length/block_size,buffer,burn_param)!=(burn_param->length/block_size))
         {
-            nand_dbg_err("phy_read: requested %x at %x, cannot read\n",length,offset);
+            nand_dbg_err("phy_read: requested %x at %x, cannot read\n",burn_param->length,burn_param->offset);
             goto error;
         }
-        if(copy_to_user(buf,buffer,length))
+        if(copy_to_user(burn_param->buffer,buffer,burn_param->length))
         {
             nand_dbg_err("copy_to_user error!\n");
             goto error;
@@ -567,31 +697,31 @@ static int NAND_ioctlRW(unsigned int cmd,unsigned int offset,unsigned int length
         break;
 
     case phy_write:
-        if(copy_from_user(buffer,(const void*)buf,length))
+        if(copy_from_user(buffer,(const void*)burn_param->buffer,burn_param->length))
         {
             nand_dbg_err("copy_from_user error!\n");
             goto error;
         }
-        if((length%block_size)||(offset%block_size))
+        if((burn_param->length%block_size)||(burn_param->offset%block_size))
         {
-            nand_dbg_err("phy_write: requested %x at %x, block_size %x\n",length,offset,block_size);
+            nand_dbg_err("phy_write: requested %x at %x, block_size %x\n",burn_param->length,burn_param->offset,block_size);
             goto error;
         }
-        if(NAND_UbootSimpleWrite(offset/block_size,length/block_size,buffer)!=(length/block_size))
+        if(NAND_UbootSimpleWrite(burn_param->offset/block_size,burn_param->length/block_size,buffer,burn_param)!=(burn_param->length/block_size))
         {
-            nand_dbg_err("phy_write: requested %x at %x, cannot write\n",length,offset);
+            nand_dbg_err("phy_write: requested %x at %x, cannot write\n",burn_param->length,burn_param->offset);
             goto error;
         }
         break;
 
     case read_boot0:
-        memset(buffer,0,length);
-        if(NAND_ReadBoot0(length,buffer))
+        memset(buffer,'X',burn_param->length);
+        if(NAND_ReadBoot0(burn_param->length,buffer))
         {
-            nand_dbg_err("NAND_ReadBoot0() error!\n");
+            nand_dbg_err("NAND_ReadBoot0 error!\n");
             goto error;
         }
-        if(copy_to_user(buf,buffer,length))
+        if(copy_to_user(burn_param->buffer,buffer,burn_param->length))
         {
             nand_dbg_err("copy_to_user error!\n");
             goto error;
@@ -616,7 +746,7 @@ static int nand_ioctl(struct block_device *bdev, fmode_t mode, unsigned int cmd,
     struct nand_blk_dev *dev = bdev->bd_disk->private_data;
     struct nand_blk_ops *nandr = dev->nandr;
     struct burn_param_t burn_param;
-    int ret=0;
+    int ret=-EFAULT;
 
     switch (cmd) {
     case BLKFLSBUF:
@@ -671,7 +801,7 @@ static int nand_ioctl(struct block_device *bdev, fmode_t mode, unsigned int cmd,
         if (copy_from_user(&burn_param, (const void*)arg, sizeof (struct burn_param_t)))
                 return -EFAULT;
 
-        if (0 == down_trylock(&(nandr->nand_ops_mutex)))
+        down(&(nandr->nand_ops_mutex));
         {
             IS_IDLE = 0;
             ret = NAND_BurnBoot0(burn_param.length, burn_param.buffer);
@@ -684,7 +814,7 @@ static int nand_ioctl(struct block_device *bdev, fmode_t mode, unsigned int cmd,
         if (copy_from_user(&burn_param, (const void*)arg, sizeof (struct burn_param_t)))
                 return -EFAULT;
 
-        if (0 == down_trylock(&(nandr->nand_ops_mutex)))
+        down(&(nandr->nand_ops_mutex));
         {
             IS_IDLE = 0;
             ret = NAND_BurnBoot1(burn_param.length, burn_param.buffer);
@@ -700,18 +830,19 @@ static int nand_ioctl(struct block_device *bdev, fmode_t mode, unsigned int cmd,
         if (copy_from_user(&burn_param, (const void*)arg, sizeof (struct burn_param_t)))
                 return -EFAULT;
 
-        if (0 == down_trylock(&(nandr->nand_ops_mutex)))
+        down(&(nandr->nand_ops_mutex));
         {
             IS_IDLE = 0;
-            ret = NAND_ioctlRW(cmd, burn_param.offset, burn_param.length, burn_param.buffer);
+            ret = NAND_ioctlRW(cmd, &burn_param);
             up(&(nandr->nand_ops_mutex));
             IS_IDLE = 1;
         }
+        copy_to_user((void*)arg, &burn_param, sizeof (struct burn_param_t));
         return ret;
 
     case DRAGON_BOARD_TEST:
 
-        if (0 == down_trylock(&(nandr->nand_ops_mutex)))
+        down(&(nandr->nand_ops_mutex));
         {
             IS_IDLE = 0;
             ret = NAND_DragonboardTest();
@@ -723,6 +854,8 @@ static int nand_ioctl(struct block_device *bdev, fmode_t mode, unsigned int cmd,
     default:
         return -ENOTTY;
     }
+
+    return ret;
 }
 
 /*****************************************************************************

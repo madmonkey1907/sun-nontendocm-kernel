@@ -97,3 +97,5 @@ bImage
 *.swp
 rootfs.cpio.gz
 drivers/arisc/binary/arisc
+
+*-hmod/

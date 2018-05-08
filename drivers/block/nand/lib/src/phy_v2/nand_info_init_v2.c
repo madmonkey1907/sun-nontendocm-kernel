@@ -86,7 +86,7 @@ int nand_info_init_v3(struct _nand_info*nand_info,uchar chip,uint16 start_block,
     unsigned int nDieNum,nBlkNum,nPage,i,nouse;
     unsigned int ret;
     struct _boot_info* boot;
-    unsigned int start_block_real;
+    unsigned int start_block_real=0;
 
     boot = nand_info->boot;
 
@@ -1236,6 +1236,7 @@ int print_factory_block_table_v2(struct _nand_info*nand_info)
         }
     }
 
+    return 0;
 }
 
 /*****************************************************************************
@@ -1936,7 +1937,6 @@ int build_all_phy_partition_v2(struct _nand_info*nand_info)
 *****************************************************************************/
 int print_mbr_data(uchar* mbr_data)
 {
-    
     PARTITION_MBR* mbr = (PARTITION_MBR*)mbr_data;
     NAND_PARTITION* part;
     NFTL_ERR("[NE]mbr->PartCount: %d!\n",mbr->PartCount);
@@ -1953,4 +1953,6 @@ int print_mbr_data(uchar* mbr_data)
         NFTL_ERR("[NE]part->keydata: %d !\n",part->keydata);
         NFTL_ERR("[NE]part->ro: %d !\n",part->ro);
     }
+
+    return 0;
 }

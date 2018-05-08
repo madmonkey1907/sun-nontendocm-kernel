@@ -1543,7 +1543,7 @@ __s32 _read_single_page(struct boot_physical_param *readop,__u8 dma_wait_mode)
 	__u8 addr[5];
 	NFC_CMD_LIST cmd_list[4];
 	__u32 list_len;
-	__s32 i, n,m; //, err, cnt;
+	__s32 i, n,m=0; //, err, cnt;
 
 	for (i=0; i<4*64; i++)
 		sparebuf[i] = 0x55;
@@ -3304,7 +3304,7 @@ int _get_secure_uboot_offset(void *buf)
 
 int _get_uboot_offset(int sys_mode, void *buf)
 {
-	int length;
+	int length = 0;
 
 	if(0 == sys_mode)
 		length = _get_normal_uboot_offset(buf);
@@ -3348,7 +3348,7 @@ int _is_secure_uboot_magic(void *buf)
 
 int _is_uboot_magic(int sys_mode, void *buf)
 {
-	int ret;
+	int ret=0;
 
 	if(0 == sys_mode)
 		ret = _is_normal_uboot_magic(buf);
@@ -3654,6 +3654,7 @@ __s32 Physic_Info_Get_One_Copy(__u32 start_block,__u32 pages_offset,__u32 *block
 	if(tempbuf1)
 		FREE(tempbuf1,size_per_page);
 
+	return 0;
 }
 
 __s32 Clean_Physic_Info(void)

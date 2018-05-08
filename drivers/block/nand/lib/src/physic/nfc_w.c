@@ -1801,7 +1801,7 @@ __s32 _read_in_page_mode_1st_1K_normal_ecc(NFC_CMD_LIST  *rcmd,void *mainbuf,voi
 		NDFC_WRITE_REG_SECTOR_NUM(data_size/1024); //1024-->4096
 	} else if (NdfcVersion == NDFC_VERSION_V2) {
 		/*set NFC_REG_BLOCK_MASK*/
-		NDFC_WRITE_REG_BLOCK_MASK( ( 0x1U<<(data_size/1024) -1) ); //0x1U-->0xF
+		NDFC_WRITE_REG_BLOCK_MASK( ( (0x1U<<(data_size/1024)) -1) ); //0x1U-->0xF
 	} else
 		PHY_ERR("_read_in_page_mode_1st_1K_normal_ecc: wrong ndfc version, %d\n", NdfcVersion);
 

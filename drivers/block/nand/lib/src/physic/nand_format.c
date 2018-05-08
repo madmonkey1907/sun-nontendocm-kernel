@@ -833,7 +833,7 @@ __s32 PHY_VirtualBlockErase(__u32 nDieNum, __u32 nBlkNum)
 
 __s32 FMT_NandSorting_IsBadblk(__u32 nDieNum, __u32 nBlkNum, __u32 nPage)
 {
-	__s32 result;
+	__s32 result = 0;
 	__u32 bad_flag = 0;
 	__u32 tmpBnkNum,tmpPage;
 	struct __PhysicOpPara_t tmpPhyPage;
