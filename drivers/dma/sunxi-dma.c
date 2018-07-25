@@ -417,6 +417,9 @@ static int sunxi_terminate_all(struct sunxi_chan *ch)
 	writel(CHAN_STOP, sdev->base + DMA_ENABLE(chan_num));
 	writel(CHAN_RESUME, sdev->base + DMA_PAUSE(chan_num));
 
+	while(readl(sdev->base + DMA_STAT) & (1 << chan_num))
+	 	cpu_relax();
+
 	if (ch->cyclic) {
 		ch->cyclic = false;
 		if (ch->desc) {
@@ -855,12 +858,17 @@ struct dma_async_tx_descriptor *sunxi_prep_dma_cyclic( struct dma_chan *chan,
 	dma_addr_t phy;
 	unsigned int periods = buf_len / period_len;
 	unsigned int i;
+	unsigned long lock_flags;
 
 	/*
 	 * Not allow duplicate prep dma on cyclic channel.
 	 */
-	if (schan->desc && schan->cyclic)
+	spin_lock_irqsave(&schan->vc.lock, lock_flags);
+	if (schan->desc && schan->cyclic) {
+		spin_unlock_irqrestore(&schan->vc.lock, lock_flags);
 		return NULL;
+	}
+	spin_unlock_irqrestore(&schan->vc.lock, lock_flags);
 
 	txd = kzalloc(sizeof(*txd), GFP_NOWAIT);
 	if (!txd) {

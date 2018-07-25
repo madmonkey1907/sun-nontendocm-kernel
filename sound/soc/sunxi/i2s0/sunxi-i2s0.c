@@ -90,10 +90,6 @@ static struct sunxi_dma_params sunxi_i2s0_pcm_stereo_in = {
 static void sunxi_snd_txctrl_i2s0(struct snd_pcm_substream *substream, int on)
 {
 	u32 reg_val;
-       /*for test*/
-//     reg_val = readl(sunxi_i2s0.regs + SUNXI_I2S0CTL);
-//     reg_val |= SUNXI_I2S0CTL_LOOP;
-//     writel(reg_val, sunxi_i2s0.regs + SUNXI_I2S0CTL);
 
 	reg_val = readl(sunxi_i2s0.regs + SUNXI_TXCHSEL);
 	reg_val &= ~0x7;
@@ -167,6 +163,11 @@ static void sunxi_snd_txctrl_i2s0(struct snd_pcm_substream *substream, int on)
 		reg_val = readl(sunxi_i2s0.regs + SUNXI_I2S0INT);
 		reg_val &= ~SUNXI_I2S0INT_TXDRQEN;
 		writel(reg_val, sunxi_i2s0.regs + SUNXI_I2S0INT);
+
+		/* Give the DMA engine some time to complete any pending
+		 * DRQ. This ensures that the following start trigger will
+		 * be the only code changing the FIFO state. */
+		udelay(10);
 	}
 }
 
