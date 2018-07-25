@@ -2193,7 +2193,7 @@ s32 disp_al_smcl_enable(u32 screen_id, u32 enable)
 	else
 		data[0] = DISP_OUT_CSC_TYPE_LCD;
 
-	data[1] = DISP_COLOR_RANGE_0_255;
+	data[1] = DISP_COLOR_RANGE_16_235;
 	disp_al_notifier_call_chain(DISP_EVENT_SAT_CSC, screen_id, (void*)data);
 
 	return SAT_Enable_Disable(screen_id, enable);

@@ -74,10 +74,14 @@ static __inline s32 PWRSAVE_CORE(u32 sel)
 
 	backlight = IEP_Drc_Get_Cur_Backlight(sel);
 
-	if(backlight < PWRSAVE_PROC_THRES) {
+	if(backlight < PWRSAVE_PROC_THRES || SLIM_GAMMA_TABLE) {
 		/* if current backlight lt PWRSAVE_PROC_THRES, close smart backlight function */
 		memset(gpwrsv[sel].min_adj_index_hist, 255, sizeof(u8)*IEP_LH_PWRSV_NUM);
+#if SLIM_GAMMA_TABLE
+		lgcaddr = (u32)pttab[sel];
+#else
 		lgcaddr = (u32)pttab[sel] + ((128-1)<<9);
+#endif
 		lgcaddr = __pa(lgcaddr);
 		DRC_EBIOS_Drc_Set_Lgc_Addr(sel, lgcaddr); //set "gain=1" tab to lgc
 
@@ -195,7 +199,11 @@ s32 drc_proc(u32 sel)
 		DRC_EBIOS_Set_Csc_Coeff(sel, csc_mode);   //12-04-01 debug flicker in LCD opening
 		//bsp_disp_set_output_csc(sel, gdisp.screen[sel].output_type, 1); //TBD
 
+#if SLIM_GAMMA_TABLE
+		lgcaddr = (u32)pttab[sel];
+#else
 		lgcaddr = (u32)pttab[sel] + ((128-1)<<9);
+#endif
 		lgcaddr = __pa(lgcaddr);
 		DRC_EBIOS_Drc_Set_Lgc_Addr(sel, lgcaddr); //set "gain=1" tab to lgc
 		DRC_EBIOS_Enable(sel);  //enable here

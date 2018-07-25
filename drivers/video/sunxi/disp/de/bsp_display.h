@@ -147,6 +147,8 @@ extern s32 bsp_disp_lcd_power_enable(u32 screen_id, u32 pwr_id);
 extern s32 bsp_disp_lcd_power_disable(u32 screen_id, u32 pwr_id);
 extern s32 bsp_disp_lcd_backlight_enable(u32 screen_id);
 extern s32 bsp_disp_lcd_backlight_disable(u32 screen_id);
+extern s32 bsp_disp_lcd_set_dimming(u32 sel, u32  dimming);
+extern s32 bsp_disp_lcd_get_dimming(u32 sel);
 extern s32 bsp_disp_lcd_pwm_enable(u32 screen_id);
 extern s32 bsp_disp_lcd_pwm_disable(u32 screen_id);
 extern s32 bsp_disp_get_timming(u32 sel, disp_video_timing * tt);

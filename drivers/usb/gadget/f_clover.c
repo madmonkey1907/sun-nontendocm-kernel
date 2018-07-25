@@ -189,8 +189,14 @@ static struct usb_descriptor_header *ss_clover_descs[] = {
 	NULL,
 };
 
-static const char clover_hvc_interface[] = "CLV-S-HVCY";
-static const char clover_nes_interface[] = "CLV-S-NESY";
+static const char* clover_model_interface[] =
+{
+	"CLV-S-HVCY",
+	"CLV-S-NESY",
+	"CLV-S-SHVY",
+	"CLV-S-SNSY",
+	"CLV-S-SNPY",
+};
 
 static struct usb_string clover_string_defs[] = {
 	[CLOVER_INTERFACE_STRING_INDEX].s = NULL, /* replaced at runtime*/
@@ -729,14 +735,16 @@ static void clover_function_disable(struct usb_function *f)
 	VDBG(cdev, "%s disabled\n", dev->function.name);
 }
 
-static int clover_bind_config(struct usb_configuration *c, int hvc)
+static int clover_bind_config(struct usb_configuration *c, int model)
 {
 	struct clover_dev *dev = _clover_dev;
 	int ret;
 
 	printk(KERN_INFO "clover_bind_config\n");
 
-        clover_string_defs[CLOVER_INTERFACE_STRING_INDEX].s = (hvc) ? clover_hvc_interface : clover_nes_interface;
+	if (model < 0 || model >= sizeof(clover_model_interface) / sizeof(clover_model_interface[0]))
+		model = 0;
+	clover_string_defs[CLOVER_INTERFACE_STRING_INDEX].s = clover_model_interface[model];
 
 	/* allocate a string ID for our interface */
 	if (clover_string_defs[CLOVER_INTERFACE_STRING_INDEX].id == 0) {

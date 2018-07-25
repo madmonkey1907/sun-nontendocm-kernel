@@ -1534,7 +1534,7 @@ __s32 Display_Fb_Request(__u32 fb_id, __disp_fb_create_para_t *fb_para)
 				__disp_tcon_timing_t tt;
 
 				if(bsp_disp_get_timming(sel, &tt) >= 0)	{
-					info->var.pixclock = 1000000000 / tt.pixel_clk;
+					info->var.pixclock = KHZ2PICOS(tt.pixel_clk / 1000);
 					info->var.left_margin = tt.hor_back_porch;
 					info->var.right_margin = tt.hor_front_porch;
 					info->var.upper_margin = tt.ver_back_porch;
@@ -1681,7 +1681,7 @@ __s32 Display_set_fb_timming(__u32 sel)
 				__disp_tcon_timing_t tt;
 
 				if(bsp_disp_get_timming(sel, &tt)>=0)	{
-					g_fbi.fbinfo[fb_id]->var.pixclock = 1000000000 / tt.pixel_clk;
+					g_fbi.fbinfo[fb_id]->var.pixclock = KHZ2PICOS(tt.pixel_clk / 1000);
 					g_fbi.fbinfo[fb_id]->var.left_margin = tt.hor_back_porch;
 					g_fbi.fbinfo[fb_id]->var.right_margin = tt.hor_front_porch;
 					g_fbi.fbinfo[fb_id]->var.upper_margin = tt.ver_back_porch;

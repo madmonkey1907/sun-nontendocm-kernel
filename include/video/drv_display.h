@@ -510,6 +510,7 @@ typedef struct
 typedef struct
 {
 	unsigned int   lcd_gamma_tbl[256];
+	unsigned int   lcd_gamma_tbl_dimmed[256];
 	unsigned int   lcd_cmap_tbl[2][3][4];
 	unsigned int   lcd_bright_curve_tbl[256];
 }panel_extend_para;
@@ -577,6 +578,7 @@ typedef struct
 	unsigned int            lcd_cmap_en;
 	unsigned int            lcd_bright_curve_en;
 	panel_extend_para       lcd_extend_para;
+	unsigned int            lcd_dimming_en;
 
 	char                    lcd_size[8]; //e.g. 7.9, 9.7
 	char                    lcd_model_name[32];
@@ -749,6 +751,8 @@ typedef enum tag_DISP_CMD
 	DISP_CMD_LCD_USER_DEFINED_FUNC = 0x10e,
 	DISP_CMD_LCD_CHECK_OPEN_FINISH = 0x10f,
 	DISP_CMD_LCD_CHECK_CLOSE_FINISH = 0x110,
+	DISP_CMD_LCD_SET_DIMMING = 0x111,
+	DISP_CMD_LCD_GET_DIMMING = 0x112,
 
 	//---- capture ---
 	DISP_CMD_CAPTURE_SCREEN = 0x140,//caputre screen and scaler to dram

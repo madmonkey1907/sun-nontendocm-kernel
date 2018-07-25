@@ -46,8 +46,8 @@
 #define AW_UART_RD(offset)			port->serial_in(port,(offset))
 #define AW_UART_WR(value,offset)	port->serial_out(port,(offset),(value))
 #define OFFSET          			0xf0000000
-u32 debug_mask=0;
-u32 debug_mask_pm=0;
+static u32 debug_mask=0;
+static u32 debug_mask_pm=0;
 typedef struct backup_reg_def{
 	u32 dll; 		/* 0x00	*/
 	u32 dlh;		/* 0x04 */
@@ -232,7 +232,7 @@ static void
 sw_serial_pm(struct uart_port *port, unsigned int state,
           unsigned int oldstate)
 {
-	struct sw_serial_port *up = sw_serial_uart[port->irq-SUNXI_IRQ_UART_DEBUG];
+	struct sw_serial_port *up = sw_serial_uart[port->irq-SUNXI_IRQ_UART0];
 
 	if (!state){
 //		clk_enable(up->bus_clk);

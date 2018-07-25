@@ -1395,6 +1395,50 @@ s32 disp_lcd_set_panel_funs(struct disp_lcd* lcd, disp_lcd_panel_fun * lcd_cfg)
 	return 0;
 }
 
+s32 disp_lcd_set_dimming(struct disp_lcd* lcd, u32 dimming)
+{
+	struct disp_lcd_private_data *lcdp = disp_lcd_get_priv(lcd);
+
+	u32 cur_dimming;
+	dimming = !!dimming;
+
+#if defined(__LINUX_PLAT__)
+  {
+  	unsigned long flags;
+  	spin_lock_irqsave(&lcd_data_lock, flags);
+#endif
+  	cur_dimming = lcdp->panel_info.lcd_dimming_en;
+	lcdp->panel_info.lcd_dimming_en = dimming;
+#if defined(__LINUX_PLAT__)
+		spin_unlock_irqrestore(&lcd_data_lock, flags);
+	}
+#endif
+
+	if (cur_dimming == dimming) return 0;
+
+	disp_al_lcd_cfg(lcd->channel_id, &lcdp->panel_info);
+	return 0;
+}
+
+s32 disp_lcd_get_dimming(struct disp_lcd* lcd)
+{
+	struct disp_lcd_private_data *lcdp = disp_lcd_get_priv(lcd);
+
+	s32 ret;
+#if defined(__LINUX_PLAT__)
+  {
+  	unsigned long flags;
+  	spin_lock_irqsave(&lcd_data_lock, flags);
+#endif
+	ret = lcdp->panel_info.lcd_dimming_en;
+#if defined(__LINUX_PLAT__)
+		spin_unlock_irqrestore(&lcd_data_lock, flags);
+	}
+#endif
+
+	return ret;
+}
+
 disp_lcd_flow * disp_lcd_get_open_flow(struct disp_lcd* lcd)
 {
 	struct disp_lcd_private_data *lcdp = disp_lcd_get_priv(lcd);
@@ -1941,14 +1985,21 @@ s32 disp_lcd_get_input_csc(struct disp_lcd *lcd, disp_out_csc_type *csc_type)
 s32 disp_lcd_get_timing(struct disp_lcd *lcd, disp_video_timing * tt)
 {
 	struct disp_lcd_private_data *lcdp = disp_lcd_get_priv(lcd);
-
+	u32 lcd_dclk_freq;
+	
 	if((NULL == lcd) || (NULL == lcdp)) {
 		DE_WRN("NULL hdl!\n");
 		return DIS_FAIL;
 	}
 
+#if defined(CONFIG_ARCH_SUN8IW5P1) && defined(SUPPORT_EXTERNAL_HDMI)
+	lcd_dclk_freq = lcdp->panel_info.lcd_dclk_freq;
+#else
+	lcd_dclk_freq = lcdp->panel_info.lcd_dclk_freq * 1000000;
+#endif
+
 	memset(tt, 0, sizeof(disp_video_timing));
-	tt->pixel_clk = lcdp->panel_info.lcd_dclk_freq * 1000;
+	tt->pixel_clk = lcdp->panel_info.lcd_dclk_freq;
 	tt->x_res = lcdp->panel_info.lcd_x;
 	tt->y_res = lcdp->panel_info.lcd_y;
 	tt->hor_total_time= lcdp->panel_info.lcd_ht;
@@ -2442,6 +2493,8 @@ s32 disp_init_lcd(__disp_bsp_init_para * para)
 		lcd->tcon_enable = disp_lcd_tcon_enable;
 		lcd->tcon_disable = disp_lcd_tcon_disable;
 		lcd->set_panel_func = disp_lcd_set_panel_funs;
+		lcd->set_dimming = disp_lcd_set_dimming;
+		lcd->get_dimming = disp_lcd_get_dimming;
 		lcd->set_open_func = disp_lcd_set_open_func;
 		lcd->set_close_func = disp_lcd_set_close_func;
 		lcd->get_panel_driver_name = disp_lcd_get_driver_name;

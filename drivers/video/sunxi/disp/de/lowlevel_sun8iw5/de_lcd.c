@@ -454,7 +454,13 @@ __s32 tcon0_cfg(__u32 sel, disp_panel_para * panel)
 	}
 
 	tcon0_frm(sel,panel->lcd_frm);
-    tcon_gamma(sel,panel->lcd_gamma_en,panel->lcd_extend_para.lcd_gamma_tbl);
+	if (panel->lcd_gamma_en && panel->lcd_dimming_en)
+	{
+		tcon_gamma(sel,panel->lcd_gamma_en,panel->lcd_extend_para.lcd_gamma_tbl_dimmed);
+	} else
+	{
+	    tcon_gamma(sel,panel->lcd_gamma_en,panel->lcd_extend_para.lcd_gamma_tbl);
+	}
 	tcon_cmap(sel,panel->lcd_cmap_en,panel->lcd_extend_para.lcd_cmap_tbl);
 
 	lcd_dev[sel]->tcon0_ctl.bits.rb_swap = panel->lcd_rb_swap;

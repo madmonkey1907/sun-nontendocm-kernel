@@ -34,7 +34,13 @@
 
 //for power saving mode alg0
 #define IEP_LH_PWRSV_NUM 24
-#define IEP_LGC_TAB_SIZE 92160  //(256(GAMMA/LEVEL)*180(LEVEL)*2(BYTE))
+
+#if SLIM_GAMMA_TABLE
+#define IEP_LGC_TAB_SIZE 256  //(256(GAMMA/LEVEL)*1(LEVEL)*2(BYTE))
+#else
+#define IEP_LGC_TAB_SIZE 65536  //(256(GAMMA/LEVEL)*128(LEVEL)*2(BYTE))
+#endif
+
 typedef struct
 {
   u32       mod;

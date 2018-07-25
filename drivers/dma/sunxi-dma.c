@@ -307,7 +307,10 @@ static void sunxi_free_desc(struct virt_dma_desc *vd)
 		phy = next_phy;
 	}
 
+	txd->vd.tx.callback = NULL;
+	txd->vd.tx.callback_param = NULL;
 	kfree(txd);
+	txd = NULL;
 }
 
 static inline void sunxi_dump_com_regs(struct sunxi_chan *ch)
@@ -398,6 +401,8 @@ static void sunxi_dma_pause(struct sunxi_chan *ch)
 static int sunxi_terminate_all(struct sunxi_chan *ch)
 {
 	struct sunxi_dmadev *sdev = to_sunxi_dmadev(ch->vc.chan.device);
+	struct virt_dma_desc *vd = NULL;
+	struct virt_dma_chan *vc = NULL;
 	u32 chan_num = ch->vc.chan.chan_id;
 	unsigned long flags;
 	LIST_HEAD(head);
@@ -408,13 +413,19 @@ static int sunxi_terminate_all(struct sunxi_chan *ch)
 	list_del_init(&ch->node);
 	spin_unlock(&sdev->lock);
 
-	if (ch->desc)
-		ch->desc = NULL;
-
-	ch->cyclic = false;
-
+	writel(CHAN_PAUSE, sdev->base + DMA_PAUSE(chan_num));
 	writel(CHAN_STOP, sdev->base + DMA_ENABLE(chan_num));
 	writel(CHAN_RESUME, sdev->base + DMA_PAUSE(chan_num));
+
+	if (ch->cyclic) {
+		ch->cyclic = false;
+		if (ch->desc) {
+			vd = &(ch->desc->vd);
+			vc = &(ch->vc);
+			list_add_tail(&vd->node, &vc->desc_completed);
+		}
+	}
+	ch->desc = NULL;
 
 	vchan_get_all_descriptors(&ch->vc, &head);
 	spin_unlock_irqrestore(&ch->vc.lock, flags);
@@ -448,9 +459,6 @@ static void sunxi_start_desc(struct sunxi_chan *ch)
 
 	txd = to_sunxi_desc(&vd->tx);
 	ch->desc = txd;
-
-	while(readl(sdev->base + DMA_STAT) & (1 << chan_num))
-			cpu_relax();
 
 	if (ch->cyclic)
 		ch->irq_type = IRQ_PKG;
@@ -622,21 +630,34 @@ static irqreturn_t sunxi_dma_interrupt(int irq, void *dev_id)
 			? (status_hi >> ((chan_num - HIGH_CHAN) <<2))
 			: (status_lo >> (chan_num << 2));
 
+		spin_lock_irqsave(&ch->vc.lock, flags);
 		if (!(ch->irq_type & status))
-			continue;
+			goto unlock;
 
 		if (!ch->desc)
-			continue;
+			goto unlock;
 
-		spin_lock_irqsave(&ch->vc.lock, flags);
 		desc = ch->desc;
 		if (ch->cyclic) {
-			vchan_cyclic_callback(&desc->vd);
+			struct virt_dma_desc *vd;
+			dma_async_tx_callback cb = NULL;
+			void *cb_data = NULL;
+ 
+			vd = &desc->vd;
+			if (vd) {
+				cb = vd->tx.callback;
+				cb_data = vd->tx.callback_param;
+			}
+			spin_unlock_irqrestore(&ch->vc.lock, flags);
+			if (cb)
+				cb(cb_data);
+			spin_lock_irqsave(&ch->vc.lock, flags);
 		} else {
 			ch->desc = NULL;
 			vchan_cookie_complete(&desc->vd);
 			sunxi_start_desc(ch);
 		}
+unlock:
 		spin_unlock_irqrestore(&ch->vc.lock, flags);
 	}
 

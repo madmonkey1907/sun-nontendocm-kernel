@@ -1075,7 +1075,7 @@ s32 disp_al_hdmi_cfg(u32 screen_id, disp_video_timing *video_info)
 
 	//FIXME
 	al_priv->hdmi_info.out_csc = DISP_OUT_CSC_TYPE_LCD;
-	al_priv->hdmi_info.color_range = DISP_COLOR_RANGE_16_255;
+	al_priv->hdmi_info.color_range = DISP_COLOR_RANGE_16_235;
 	al_priv->hdmi_info.in_width = video_info->x_res;
 	al_priv->hdmi_info.in_height = video_info->y_res;
 

@@ -1,7 +1,7 @@
 VERSION = 3
 PATCHLEVEL = 4
-SUBLEVEL = 112
-EXTRAVERSION = .19-madmonkey
+SUBLEVEL = 113
+EXTRAVERSION = .22-madmonkey
 NAME = Saber-toothed Squirrel
 
 # *DOCUMENTATION*

@@ -21,27 +21,22 @@ static void LCD_cfg_panel_info(panel_extend_para * info)
 {
 	u32 i = 0, j=0;
 	u32 items;
-	u8 lcd_gamma_tbl[][2] =
-	{
-		//{input value, corrected value}
-		{0, 0},
-		{15, 15},
-		{30, 30},
-		{45, 45},
-		{60, 60},
-		{75, 75},
-		{90, 90},
-		{105, 105},
-		{120, 120},
-		{135, 135},
-		{150, 150},
-		{165, 165},
-		{180, 180},
-		{195, 195},
-		{210, 210},
-		{225, 225},
-		{240, 240},
-		{255, 255},
+
+    // matches the effect of a 0.25 factor on pre-gamma input
+    u8 dimmed_gamma_tbl[256] = {
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+		1, 2, 2, 2, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11,
+		11, 11, 12, 12, 12, 13, 13, 14, 14, 14, 15, 15, 15, 16, 16, 17, 17, 17, 18,
+		18, 19, 19, 19, 20, 20, 20, 21, 21, 22, 22, 22, 23, 23, 24, 24, 24, 25, 25,
+		25, 26, 26, 27, 27, 27, 28, 28, 29, 29, 29, 30, 30, 30, 31, 31, 32, 32, 32,
+		33, 33, 33, 34, 34, 35, 35, 35, 36, 36, 37, 37, 37, 38, 38, 38, 39, 39, 40,
+		40, 40, 41, 41, 42, 42, 42, 43, 43, 43, 44, 44, 45, 45, 45, 46, 46, 47, 47,
+		47, 48, 48, 48, 49, 49, 50, 50, 50, 51, 51, 51, 52, 52, 53, 53, 53, 54, 54,
+		55, 55, 55, 56, 56, 56, 57, 57, 58, 58, 58, 59, 59, 60, 60, 60, 61, 61, 61,
+		62, 62, 63, 63, 63, 64, 64, 65, 65, 65, 66, 66, 66, 67, 67, 68, 68, 68, 69,
+		69, 70, 70, 70, 71, 71, 71, 72, 72, 73, 73, 73, 74, 74, 74, 75, 75, 76, 76,
+		76, 77, 77, 78, 78, 78, 79, 79, 79, 80, 80, 81, 81, 81, 82, 82, 83, 83, 83,
+		84, 84, 84, 85, 85, 86, 86, 86, 87, 87, 88, 88, 88, 89, 89
 	};
 
 	u8 lcd_bright_curve_tbl[][2] =
@@ -82,18 +77,11 @@ static void LCD_cfg_panel_info(panel_extend_para * info)
 
 	memset(info,0,sizeof(panel_extend_para));
 
-	items = sizeof(lcd_gamma_tbl)/2;
-	for(i=0; i<items-1; i++) {
-		u32 num = lcd_gamma_tbl[i+1][0] - lcd_gamma_tbl[i][0];
-
-		for(j=0; j<num; j++) {
-			u32 value = 0;
-
-			value = lcd_gamma_tbl[i][1] + ((lcd_gamma_tbl[i+1][1] - lcd_gamma_tbl[i][1]) * j)/num;
-			info->lcd_gamma_tbl[lcd_gamma_tbl[i][0] + j] = (value<<16) + (value<<8) + value;
-		}
+	for(i=0; i < 256; i++) {
+		info->lcd_gamma_tbl[i] = (i << 16) + (i << 8) + i;
+		info->lcd_gamma_tbl_dimmed[i] = (dimmed_gamma_tbl[i] << 16) + (dimmed_gamma_tbl[i] << 8) +
+			dimmed_gamma_tbl[i];
 	}
-	info->lcd_gamma_tbl[255] = (lcd_gamma_tbl[items-1][1]<<16) + (lcd_gamma_tbl[items-1][1]<<8) + lcd_gamma_tbl[items-1][1];
 
 	items = sizeof(lcd_bright_curve_tbl)/2;
 	for(i=0; i<items-1; i++) {

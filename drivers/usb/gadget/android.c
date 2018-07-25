@@ -1008,7 +1008,7 @@ static struct android_usb_function accessory_function = {
 
 struct clover_function_config
 {
-	int hvc;
+	int model;
 };
 
 static int clover_presence_function_init(struct android_usb_function *f,
@@ -1033,7 +1033,7 @@ static int clover_presence_function_bind_config(struct android_usb_function *f,
 						struct usb_configuration *c)
 {
 	struct clover_function_config *config = f->config;
-	return clover_bind_config(c, !!config->hvc);
+	return clover_bind_config(c, config->model);
 }
 
 static int clover_presence_function_ctrlrequest(struct android_usb_function *f,
@@ -1043,15 +1043,15 @@ static int clover_presence_function_ctrlrequest(struct android_usb_function *f,
 	return clover_ctrlrequest(cdev, c);
 }
 
-static ssize_t clover_presence_hvc_show(struct device *dev,
+static ssize_t clover_presence_model_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct android_usb_function *f = dev_get_drvdata(dev);
 	struct clover_function_config *config = f->config;
-	return sprintf(buf, "%d\n", config->hvc);
+	return sprintf(buf, "%d\n", config->model);
 }
 
-static ssize_t clover_presence_hvc_store(struct device *dev,
+static ssize_t clover_presence_model_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
 	struct android_usb_function *f = dev_get_drvdata(dev);
@@ -1059,17 +1059,17 @@ static ssize_t clover_presence_hvc_store(struct device *dev,
 	int value;
 
 	if (sscanf(buf, "%d", &value) == 1) {
-		config->hvc = !!value;
+		config->model = value;
 		return size;
 	}
 	return -EINVAL;
 }
 
-static DEVICE_ATTR(hvc, S_IRUGO | S_IWUSR, clover_presence_hvc_show,
-						clover_presence_hvc_store);
+static DEVICE_ATTR(model, S_IRUGO | S_IWUSR, clover_presence_model_show,
+						clover_presence_model_store);
 
 static struct device_attribute *clover_presence_function_attributes[] = {
-	&dev_attr_hvc,
+	&dev_attr_model,
 	NULL
 };
 

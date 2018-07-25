@@ -78,6 +78,7 @@
 #define SUNXI_IRQ_UART2                   (SUNXI_GIC_START + 2)  /* 34 */
 #define SUNXI_IRQ_UART3                   (SUNXI_GIC_START + 3)  /* 35 */
 #define SUNXI_IRQ_UART4                   (SUNXI_GIC_START + 4)  /* 36 */
+#define SUNXI_IRQ_UART5                   (SUNXI_GIC_START + 5)  /* 37 */
 #define SUNXI_IRQ_TWI0                    (SUNXI_GIC_START + 6)  /* 38 */
 #define SUNXI_IRQ_TWI1                    (SUNXI_GIC_START + 7)  /* 39 */
 #define SUNXI_IRQ_TWI2                    (SUNXI_GIC_START + 8)  /* 40 */
@@ -144,5 +145,6 @@
 #endif
 
 #define SUNXI_IRQ_MAX                  (SUNXI_GIC_START + 128)
+#define SUNXI_IRQ_UART_DEBUG           (SUNXI_IRQ_UART0)
 
 #endif    /* __IRQS_SUN8I_W5P1_H */

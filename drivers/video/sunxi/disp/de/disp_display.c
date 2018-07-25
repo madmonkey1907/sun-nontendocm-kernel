@@ -192,7 +192,7 @@ s32 bsp_disp_shadow_protect(u32 screen_id, bool protect)
 			lcd->get_timing(lcd, &tt);
 			start_delay = disp_al_lcd_get_start_delay(screen_id);
 			start_delay = (0 == start_delay)? 32:start_delay;
-			fps = tt.pixel_clk*1000/(tt.ver_total_time*tt.hor_total_time);
+			fps = tt.pixel_clk/(tt.ver_total_time*tt.hor_total_time);
 			fps = (0 == fps)? 60:fps;
 			load_reg_time = (1*1000*1000)/(fps*tt.ver_total_time)*start_delay;
 			max_cnt = load_reg_time/delay + 1;
@@ -429,7 +429,7 @@ s32 bsp_disp_get_vb_time(void)
 
 				lcd->get_timing(lcd, &tt);
 				if((tt.ver_total_time != 0) && (tt.hor_total_time != 0))
-					fps = tt.pixel_clk*1000/(tt.ver_total_time*tt.hor_total_time);
+					fps = tt.pixel_clk/(tt.ver_total_time*tt.hor_total_time);
 				fps = (0 == fps)? 60:fps;
 				time_per_line = 1000000 / fps / tt.ver_total_time;
 				vb_time = (start_delay) * time_per_line;
@@ -473,7 +473,7 @@ s32 bsp_disp_get_cur_vb_time(void)
 
 					lcd->get_timing(lcd, &tt);
 					if((tt.ver_total_time != 0) && (tt.hor_total_time != 0))
-						fps = tt.pixel_clk*1000/(tt.ver_total_time*tt.hor_total_time);
+						fps = tt.pixel_clk/(tt.ver_total_time*tt.hor_total_time);
 					fps = (0 == fps)? 60:fps;
 					time_per_line = 1000000 / fps / tt.ver_total_time;
 					if(cur_line > start_delay)
@@ -525,7 +525,7 @@ s32 bsp_disp_get_next_vb_time(void)
 
 					lcd->get_timing(lcd, &tt);
 					if((tt.ver_total_time != 0) && (tt.hor_total_time != 0))
-						fps = tt.pixel_clk*1000/(tt.ver_total_time*tt.hor_total_time);
+						fps = tt.pixel_clk/(tt.ver_total_time*tt.hor_total_time);
 					fps = (0 == fps)? 60:fps;
 					time_per_line = 1000000 / fps / tt.ver_total_time;
 					next_time = (tt.ver_total_time - cur_line) * time_per_line;
@@ -1021,6 +1021,32 @@ s32 bsp_disp_lcd_get_bright(u32 screen_id)
 		lcd->get_bright(lcd, &bright);
 
 	return bright;
+}
+
+s32 bsp_disp_lcd_set_dimming(u32 screen_id, u32 dimming)
+{
+	s32 ret = -1;
+	struct disp_lcd* lcd;
+
+	lcd = disp_get_lcd(screen_id);
+	if(lcd && lcd->set_dimming) {
+		ret = lcd->set_dimming(lcd, dimming);
+	}
+
+	return ret;
+}
+
+s32 bsp_disp_lcd_get_dimming(u32 screen_id)
+{
+	s32 ret = -1;
+	struct disp_lcd* lcd;
+
+	lcd = disp_get_lcd(screen_id);
+	if(lcd && lcd->get_dimming) {
+		ret = lcd->get_dimming(lcd);
+	}
+
+	return ret;
 }
 
 disp_lcd_flow * bsp_disp_lcd_get_open_flow(u32 screen_id)

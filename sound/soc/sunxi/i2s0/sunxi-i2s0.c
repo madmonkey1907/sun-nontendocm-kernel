@@ -35,6 +35,20 @@
 #include "sunxi-i2s0dma.h"
 #include "sunxi-i2s0.h"
 
+/* <workaround>
+ * Based on Testing teams feedback, HDMI standard conformance tests, and
+ * TV field testing.
+ *
+ * i2s tx shutdown is not performed as a workaround:
+ * - to avoid wrong transient CTS values computed by the EP952 chip.
+ *   The i2s codec must continue sending data to the TX FIFO to avoid
+ *   timing breakage at the HDMI link level. Some TVs seem unable
+ *   to recover from this timing inconsistencies.
+ * - to suppress slight sound glitches during application switches
+ * </workaround>
+ * Set it to either 0 or 1 */
+#define CLOVER_WORKAROUND_HDMI_CTS_DISCONTINUITY_AND_SOUND_GLITCHES 1
+
 struct sunxi_i2s0_info sunxi_i2s0;
 static unsigned int pin_count = 0;
 static script_item_u  *pin_i2s0_list;
@@ -98,7 +112,7 @@ static void sunxi_snd_txctrl_i2s0(struct snd_pcm_substream *substream, int on)
 	reg_val = readl(sunxi_i2s0.regs + SUNXI_I2S0CTL);
 	reg_val &= ~SUNXI_I2S0CTL_SDO3EN;
 	reg_val &= ~SUNXI_I2S0CTL_SDO2EN;
-       reg_val &= ~SUNXI_I2S0CTL_SDO1EN;
+	reg_val &= ~SUNXI_I2S0CTL_SDO1EN;
 	reg_val &= ~SUNXI_I2S0CTL_SDO0EN;
 	switch(substream->runtime->channels) {
 		case 1:
@@ -125,7 +139,7 @@ static void sunxi_snd_txctrl_i2s0(struct snd_pcm_substream *substream, int on)
 
 	/*flush TX FIFO*/
 	reg_val = readl(sunxi_i2s0.regs + SUNXI_I2S0FCTL);
-       reg_val |= SUNXI_I2S0FCTL_FTX;
+	reg_val |= SUNXI_I2S0FCTL_FTX;
 	writel(reg_val, sunxi_i2s0.regs + SUNXI_I2S0FCTL);
 
 	/*clear TX counter*/
@@ -142,12 +156,14 @@ static void sunxi_snd_txctrl_i2s0(struct snd_pcm_substream *substream, int on)
 		reg_val |= SUNXI_I2S0INT_TXDRQEN;
 		writel(reg_val, sunxi_i2s0.regs + SUNXI_I2S0INT);
 	} else {
-		/* I2S0 TX DISABLE */
-		reg_val = readl(sunxi_i2s0.regs + SUNXI_I2S0CTL);
-		reg_val &= ~SUNXI_I2S0CTL_TXEN;
-		writel(reg_val, sunxi_i2s0.regs + SUNXI_I2S0CTL);
+		if (!CLOVER_WORKAROUND_HDMI_CTS_DISCONTINUITY_AND_SOUND_GLITCHES) {
+			/* I2S0 TX DISABLE */
+			reg_val = readl(sunxi_i2s0.regs + SUNXI_I2S0CTL);
+			reg_val &= ~SUNXI_I2S0CTL_TXEN;
+			writel(reg_val, sunxi_i2s0.regs + SUNXI_I2S0CTL);
+		}
 
-		/* DISBALE dma DRQ mode */
+		/* DISABLE dma DRQ mode */
 		reg_val = readl(sunxi_i2s0.regs + SUNXI_I2S0INT);
 		reg_val &= ~SUNXI_I2S0INT_TXDRQEN;
 		writel(reg_val, sunxi_i2s0.regs + SUNXI_I2S0INT);
@@ -361,45 +377,41 @@ static int sunxi_i2s0_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+static void sunxi_i2s0_trigger_common(struct snd_pcm_substream *substream,
+		int on)
+{
+	u32 reg_val;
+
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+		sunxi_snd_rxctrl_i2s0(substream, on);
+	} else {
+		sunxi_snd_txctrl_i2s0(substream, on);
+	}
+
+	/*Deal with the Global Enable Digital Audio Interface*/
+	reg_val = readl(sunxi_i2s0.regs + SUNXI_I2S0CTL);
+	if (on) {
+		reg_val |= SUNXI_I2S0CTL_GEN;
+	} else if (!CLOVER_WORKAROUND_HDMI_CTS_DISCONTINUITY_AND_SOUND_GLITCHES) {
+		reg_val &= ~SUNXI_I2S0CTL_GEN;
+	}
+	writel(reg_val, sunxi_i2s0.regs + SUNXI_I2S0CTL);
+}
+
 static int sunxi_i2s0_trigger(struct snd_pcm_substream *substream,
                               int cmd, struct snd_soc_dai *dai)
 {
 	int ret = 0;
-	u32 reg_val;
 	switch (cmd) {
 		case SNDRV_PCM_TRIGGER_START:
 		case SNDRV_PCM_TRIGGER_RESUME:
 		case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-			if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
-				sunxi_snd_rxctrl_i2s0(substream, 1);
-			} else {
-				sunxi_snd_txctrl_i2s0(substream, 1);
-			}
-			/*Global Enable Digital Audio Interface*/
-			reg_val = readl(sunxi_i2s0.regs + SUNXI_I2S0CTL);
-			reg_val |= SUNXI_I2S0CTL_GEN;
-//			reg_val |= SUNXI_I2S0CTL_LOOP;
-			writel(reg_val, sunxi_i2s0.regs + SUNXI_I2S0CTL);
+			sunxi_i2s0_trigger_common(substream, 1);
 			break;
 		case SNDRV_PCM_TRIGGER_STOP:
 		case SNDRV_PCM_TRIGGER_SUSPEND:
 		case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
-			// <hack>
-			// We disable i2s disabling to avoid wrong transient CTS
-			// values computed by EP952, and to suppress slight pops
-			// on i2s status change.
-#if 0
-			if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
-				sunxi_snd_rxctrl_i2s0(substream, 0);
-			} else {
-				sunxi_snd_txctrl_i2s0(substream, 0);
-			}
-			Global disable Digital Audio Interface
-			reg_val = readl(sunxi_i2s0.regs + SUNXI_I2S0CTL);
-			reg_val &= ~SUNXI_I2S0CTL_GEN;
-			writel(reg_val, sunxi_i2s0.regs + SUNXI_I2S0CTL);
-#endif
-			// </hack>
+			sunxi_i2s0_trigger_common(substream, 0);
 			break;
 		default:
 			ret = -EINVAL;

@@ -161,14 +161,17 @@ static int get_factors_pll_video(u32 rate, u32 parent_rate, struct clk_factors_v
 {
     u64 tmp_rate;
     int index;
+
     if(!factor)
         return -1;
 
     tmp_rate = rate>pllvideo_max ? pllvideo_max : rate;
     do_div(tmp_rate, 1000000);
     index = tmp_rate;
- 		if(sunxi_clk_get_common_factors_search(&sunxi_clk_factor_pll_video,factor, factor_pllvideo_tbl,index,sizeof(factor_pllvideo_tbl)/sizeof(struct sunxi_clk_factor_freq)))
+ 		if(sunxi_clk_get_common_factors_search(&sunxi_clk_factor_pll_video,factor, factor_pllvideo_tbl,index,sizeof(factor_pllvideo_tbl)/sizeof(struct sunxi_clk_factor_freq))) {
+            printk(KERN_ERR "%s sunxi_clk_get_common_factors_search failed\n", __func__);
  			return -1;
+        }
     if(rate == 297000000) {
         factor->frac_mode = 0;
         factor->frac_freq = 1;
@@ -303,14 +306,20 @@ static int get_factors_pll_mipi(u32 rate, u32 parent_rate, struct clk_factors_va
     u64 tmp_rate;
     u32 delta1,delta2,want_rate,new_rate,save_rate=0;
     int n,k,m;
+
     if(!factor)
         return -1;
+
+    memset(factor, 0, sizeof(struct clk_factors_value));
+
     tmp_rate = rate>1440000000 ? 1440000000 : rate;
     do_div(tmp_rate, 1000000);
     want_rate = tmp_rate;
-    for(m=1;			m <=16;	m++)
-		for(k=2;			k <=4;	k++)
-            for(n=1;			n <=16;	n++)
+    for(m=1; m <=16; m++)
+    {
+        for(k=2; k <=4;	k++)
+        {
+            for(n=1; n <=16; n++)
             {
                 new_rate = (parent_rate/1000000)*k*n/m;
                 delta1 = (new_rate > want_rate)?(new_rate - want_rate):(want_rate - new_rate);
@@ -323,6 +332,8 @@ static int get_factors_pll_mipi(u32 rate, u32 parent_rate, struct clk_factors_va
                     save_rate = new_rate;
                 }
             }
+        }
+    }
 
     return 0;
 }
@@ -397,6 +408,7 @@ u8 get_parent_pll_mipi(struct clk_hw *hw)
 
     if(!factor->reg)
         return 0;
+
     reg = readl(factor->reg);
     parent = GET_BITS(21, 1, reg);
 
@@ -427,10 +439,12 @@ static int clk_enable_pll_mipi(struct clk_hw *hw)
     }
 
     reg |= 0x3 << 22;
+
     writel(reg, factor->reg);
     udelay(100);
 
     reg = SET_BITS(config->enshift, 1, reg, 1);
+
     writel(reg, factor->reg);
     udelay(100);
 

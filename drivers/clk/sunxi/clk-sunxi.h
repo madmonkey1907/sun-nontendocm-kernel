@@ -17,7 +17,7 @@
 #define GET_BITS(shift, width, reg)     \
             (((reg) & SETMASK(width, shift)) >> (shift))
 #define SET_BITS(shift, width, reg, val) \
-            (((reg) & CLRMASK(width, shift)) | (val << (shift)))
+            (((reg) & CLRMASK(width, shift)) | (SETMASK(width, shift) & ((val) << (shift))))
 
 #define __SUNXI_ALL_CLK_IGNORE_UNUSED__  1
 

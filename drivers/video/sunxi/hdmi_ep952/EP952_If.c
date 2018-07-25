@@ -176,7 +176,7 @@ void HDMI_Tx_Power_Up(void)
 unsigned char HDMI_Tx_HTPLG(void)
 {
 	// EP952 RSEN Enable
-	EP952_Reg_Clear_Bit(EP952_TX_PHY_Control_1, EP952_TX_PHY_Control_1__RESN_DIS);
+	// EP952_Reg_Clear_Bit(EP952_TX_PHY_Control_1, EP952_TX_PHY_Control_1__RESN_DIS);
 
 	// read register
 	EP952_Reg_Read(EP952_General_Control_2, Temp_Data, 1);
@@ -213,6 +213,7 @@ unsigned char HDMI_Tx_hpd_state(void)
 	int result = 1;
 	// EP952 RSEN Enable
 	//EP952_Reg_Clear_Bit(EP952_TX_PHY_Control_1, EP952_TX_PHY_Control_1__RESN_DIS);
+	/*
 	result = IIC_Read(IIC_EP952_Addr, EP952_TX_PHY_Control_1, temp_data, 1);
 	if(result == 0)
 	{
@@ -220,6 +221,7 @@ unsigned char HDMI_Tx_hpd_state(void)
 		temp_data[0] &= ~EP952_TX_PHY_Control_1__RESN_DIS;
 		IIC_Write(IIC_EP952_Addr, EP952_TX_PHY_Control_1, temp_data, 1);
 	}
+	*/
 
 	// read register
 	EP952_Reg_Read(EP952_General_Control_2, temp_data, 1);

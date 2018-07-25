@@ -1302,6 +1302,12 @@ long disp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			ret = bsp_disp_lcd_backlight_disable(ubuffer[0]);
 		}
 		break;
+	case DISP_CMD_LCD_SET_DIMMING:
+		ret = bsp_disp_lcd_set_dimming(ubuffer[0], ubuffer[1]);
+		break;
+	case DISP_CMD_LCD_GET_DIMMING:
+		ret = bsp_disp_lcd_get_dimming(ubuffer[0]);
+		break;
 #if defined(CONFIG_ARCH_SUN8IW5P1)
 	case DISP_CMD_HDMI_ENABLE:
 		ret = drv_lcd_enable(ubuffer[0]);

@@ -86,6 +86,7 @@ extern struct i2c_adapter *i2c_get_adapter(int nr);
 extern void EP952Controller_Timer(void);
 extern void EP952Controller_Task(void);
 extern unsigned char HDMI_Tx_hpd_state(void);
+extern SMBUS_STATUS EP952_Reg_Read(unsigned char ByteAddr, unsigned char *Data, unsigned int Size);
 
 static disp_video_timing video_timing[] =
 {
@@ -512,6 +513,31 @@ static int ep952_late_resume(void)
 
 extern int bsp_extern_hdmi_register();
 
+ssize_t hdmi_i2c_show_regs(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    char regs[0x89];
+    EP952_Reg_Read(0, regs, sizeof(regs));
+    ssize_t written = 0;
+    int i;
+    int firstVal = 1;
+    for (i = 0; i < sizeof(regs); ++i)
+    {
+        if (!firstVal) written += sprintf(buf + written, " ");
+        firstVal = 0;
+        written += sprintf(buf + written, "%.2x", regs[i]);
+    }
+    written += sprintf(buf + written, "\n");
+    return written;
+}
+
+ssize_t hdmi_i2c_store_regs(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+    //no-op
+}
+
+static DEVICE_ATTR(regs, S_IRUGO|S_IWUSR|S_IWGRP,
+    hdmi_i2c_show_regs, hdmi_i2c_store_regs);
+
 static int hdmi_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 
@@ -558,7 +584,15 @@ static int hdmi_i2c_probe(struct i2c_client *client, const struct i2c_device_id 
 	bsp_extern_hdmi_register();
     //ep952_device = disp_vdevice_register(&init_data);
 
+    int ret;
+    ret = device_create_file(&client->dev, &dev_attr_regs);
+
+    if (ret) goto err;
+
     return 0;
+
+err:
+    return -ENODEV;
 }
 
 static int __devexit hdmi_i2c_remove(struct i2c_client *client)

@@ -169,6 +169,8 @@ struct disp_lcd {
 	s32 (*post_enable)(struct disp_lcd *lcd);
 	s32 (*pre_disable)(struct disp_lcd *lcd);
 	s32 (*post_disable)(struct disp_lcd *lcd);
+	s32 (*set_dimming) (struct disp_lcd *lcd, u32 dimming);
+	s32 (*get_dimming) (struct disp_lcd *lcd);
 	s32 (*set_panel_func)(struct disp_lcd *lcd, disp_lcd_panel_fun * lcd_cfg);
 	s32 (*get_panel_driver_name)(struct disp_lcd *lcd, char *name);
 	s32 (*pin_cfg)(struct disp_lcd *lcd, u32 bon);
