@@ -1583,6 +1583,65 @@ int sunxi_usb_host0_disable(void)
 }
 EXPORT_SYMBOL(sunxi_usb_host0_disable);
 
+// This was copied from the "reset_flag" part of sunxi_hcd_irq_work() above.
+static void reset_usb(struct sunxi_hcd *sunxi_hcd)
+{
+	int reg_val = 0;
+
+	DMSG_INFO("reset_usb: start\n");
+
+	void __iomem *usbc_base = sunxi_hcd->mregs;
+	if( (void*)sunxi_hcd->mregs==(void*)NULL )
+	{
+		DMSG_INFO("reset_usb: sunxi_hcd->mregs==NULL\n");
+		return;
+	}
+	if( (void*)sunxi_hcd->sunxi_hcd_io==(void*)NULL )
+	{
+		DMSG_INFO("reset_usb: sunxi_hcd->sunxi_hcd_io==NULL\n");
+		return;
+	}
+	if( (void*)sunxi_hcd->sunxi_hcd_io->usb_bsp_hdle==(void*)NULL )
+	{
+		DMSG_INFO("reset_usb: sunxi_hcd->sunxi_hcd_io==NULL\n");
+		return;
+	}
+
+	// power down
+	reg_val = USBC_Readb(USBC_REG_DEVCTL(usbc_base));
+	reg_val &= ~(1 << USBC_BP_DEVCTL_SESSION);
+	USBC_Writeb(reg_val, USBC_REG_DEVCTL(usbc_base));
+
+	USBC_ForceVbusValid(sunxi_hcd->sunxi_hcd_io->usb_bsp_hdle, USBC_VBUS_TYPE_LOW);
+
+	DMSG_INFO("reset_usb: sunxi_hcd_set_vbus(0)\n");
+	sunxi_hcd_set_vbus(sunxi_hcd, 0);
+
+	// delay
+	mdelay(100);
+
+	// power on
+	reg_val = USBC_Readb(USBC_REG_DEVCTL(usbc_base));
+	reg_val |= (1 << USBC_BP_DEVCTL_SESSION);
+	USBC_Writeb(reg_val, USBC_REG_DEVCTL(usbc_base));
+
+	USBC_ForceVbusValid(sunxi_hcd->sunxi_hcd_io->usb_bsp_hdle, USBC_VBUS_TYPE_HIGH);
+
+	DMSG_INFO("reset_usb: sunxi_hcd_set_vbus(1)\n");
+	sunxi_hcd_set_vbus(sunxi_hcd, 1);
+
+	// disconnect
+	sunxi_hcd->ep0_stage = SUNXI_HCD_EP0_START;
+	usb_hcd_resume_root_hub(sunxi_hcd_to_hcd(sunxi_hcd));
+	sunxi_hcd_root_disconnect(sunxi_hcd);
+
+	USBC_INT_EnableUsbMiscUint(sunxi_hcd->sunxi_hcd_io->usb_bsp_hdle, (1 << USBC_BP_INTUSB_RESET));
+
+	sunxi_hcd->is_connected = 0;
+
+	DMSG_INFO("reset_usb: end\n");
+}
+
 /*
  * all implementations (PCI bridge to FPGA, VLYNQ, etc) should just
  * bridge to a platform device; this driver then suffices.
@@ -1621,6 +1680,13 @@ static int sunxi_hcd_probe_otg(struct platform_device *pdev)
 	}
 
 	device_create_file(&pdev->dev, &dev_attr_otg_ed_test);
+
+	// This is a hack to reset usb hw back to its default state.
+	// When membooting a kernel via fel mode the usb hw is left in a non-default
+	// configuration that causes host mode to not work. This fixes that.
+	struct sunxi_hcd *sunxi_hcd = dev_to_sunxi_hcd(&pdev->dev);
+	if( sunxi_hcd!=NULL )
+		reset_usb(sunxi_hcd);
 
 	ret = sunxi_usb_host0_disable();
 	if (ret != 0) {
@@ -1690,6 +1756,13 @@ static int sunxi_hcd_probe_host_only(struct platform_device *pdev)
 	}
 
 	device_create_file(&pdev->dev, &dev_attr_otg_ed_test);
+
+	// This is a hack to reset usb hw back to its default state.
+	// When membooting a kernel via fel mode the usb hw is left in a non-default
+	// configuration that causes host mode to not work. This fixes that.
+	struct sunxi_hcd *sunxi_hcd = dev_to_sunxi_hcd(&pdev->dev);
+	if( sunxi_hcd!=NULL )
+		reset_usb(sunxi_hcd);
 
 #ifdef  CONFIG_USB_SUNXI_USB0_HOST
 	if (!g_sunxi_hcd_io.host_init_state) {
