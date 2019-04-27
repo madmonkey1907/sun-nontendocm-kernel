@@ -1,7 +1,7 @@
 #!/bin/sh -e
 
 MAKE(){
-  make ARCH=arm "CROSS_COMPILE=$CROSS_COMPILE" ${1+"$@"} 1>/dev/null
+  make ARCH=arm "CROSS_COMPILE=$CROSS_COMPILE" CFLAGS_MODULE=-fno-pic ${1+"$@"} 1>/dev/null
 }
 
 CROSS_COMPILE=arm-linux-gnueabihf-
@@ -43,14 +43,11 @@ find "$instdir" -type l -delete
 mkdir "$instdir/lib/modules/$KVERS/extra"
 cp -f "modules/mali/mali.ko" "$instdir/lib/modules/$KVERS/extra/"
 cp -f "clovercon/clovercon.ko" "$instdir/lib/modules/$KVERS/extra/"
+cp -Rf clovercon/mod/* modules-hmod
 
 echo "return 0" > "$instdir/uninstall"
 echo "no-uninstall" >> "$instdir/uninstall"
 
 find "$instdir" -type f -name "*.ko" -print0 | xargs -0 -n1 "${CROSS_COMPILE}strip" --strip-unneeded
-echo "somebody set up us the bomb"
-exit 0
-makepack "$instdir"
-rm -rf "$instdir"
-rm -f "modules-$KVERS.hmod"
-mv "$instdir.hmod.tgz" "modules-$KVERS.hmod"
+cd "$instdir"
+tar -czvf ../modules-$KVERS.hmod *
